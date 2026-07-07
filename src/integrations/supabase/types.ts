@@ -1943,9 +1943,13 @@ export type Database = {
       form_submissions: {
         Row: {
           assignment_id: string | null
+          code: string | null
           created_at: string
+          current_version_id: string | null
+          current_workflow_node: string | null
           data: Json
           form_id: string
+          form_snapshot: Json | null
           id: string
           opd_id: string | null
           review_note: string | null
@@ -1957,12 +1961,17 @@ export type Database = {
           updated_at: string
           user_id: string | null
           version_number: number
+          workflow_version_id: string | null
         }
         Insert: {
           assignment_id?: string | null
+          code?: string | null
           created_at?: string
+          current_version_id?: string | null
+          current_workflow_node?: string | null
           data?: Json
           form_id: string
+          form_snapshot?: Json | null
           id?: string
           opd_id?: string | null
           review_note?: string | null
@@ -1974,12 +1983,17 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           version_number?: number
+          workflow_version_id?: string | null
         }
         Update: {
           assignment_id?: string | null
+          code?: string | null
           created_at?: string
+          current_version_id?: string | null
+          current_workflow_node?: string | null
           data?: Json
           form_id?: string
+          form_snapshot?: Json | null
           id?: string
           opd_id?: string | null
           review_note?: string | null
@@ -1991,6 +2005,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           version_number?: number
+          workflow_version_id?: string | null
         }
         Relationships: []
       }
@@ -2147,57 +2162,102 @@ export type Database = {
       forms: {
         Row: {
           allow_multiple_submit: boolean
+          allowed_employee_types: Database["public"]["Enums"]["employment_type"][]
           archived_at: string | null
+          category: string | null
+          code: string | null
           created_at: string
           created_by: string | null
+          current_version_id: string | null
+          current_workflow_version_id: string | null
           deadline: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           deskripsi: string | null
           id: string
           is_public: boolean
           judul: string
           opd_pemilik_id: string | null
+          publish_approved_at: string | null
+          publish_approved_by: string | null
+          publish_reject_reason: string | null
+          publish_requested_at: string | null
+          publish_requested_by: string | null
+          publish_status: string
           published_at: string | null
           published_by: string | null
           schema_snapshot: Json | null
+          sla_days: number | null
           slug: string | null
           status: string
           updated_at: string
+          version_number: number
         }
         Insert: {
           allow_multiple_submit?: boolean
+          allowed_employee_types?: Database["public"]["Enums"]["employment_type"][]
           archived_at?: string | null
+          category?: string | null
+          code?: string | null
           created_at?: string
           created_by?: string | null
+          current_version_id?: string | null
+          current_workflow_version_id?: string | null
           deadline?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deskripsi?: string | null
           id?: string
           is_public?: boolean
           judul: string
           opd_pemilik_id?: string | null
+          publish_approved_at?: string | null
+          publish_approved_by?: string | null
+          publish_reject_reason?: string | null
+          publish_requested_at?: string | null
+          publish_requested_by?: string | null
+          publish_status?: string
           published_at?: string | null
           published_by?: string | null
           schema_snapshot?: Json | null
+          sla_days?: number | null
           slug?: string | null
           status?: string
           updated_at?: string
+          version_number?: number
         }
         Update: {
           allow_multiple_submit?: boolean
+          allowed_employee_types?: Database["public"]["Enums"]["employment_type"][]
           archived_at?: string | null
+          category?: string | null
+          code?: string | null
           created_at?: string
           created_by?: string | null
+          current_version_id?: string | null
+          current_workflow_version_id?: string | null
           deadline?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           deskripsi?: string | null
           id?: string
           is_public?: boolean
           judul?: string
           opd_pemilik_id?: string | null
+          publish_approved_at?: string | null
+          publish_approved_by?: string | null
+          publish_reject_reason?: string | null
+          publish_requested_at?: string | null
+          publish_requested_by?: string | null
+          publish_status?: string
           published_at?: string | null
           published_by?: string | null
           schema_snapshot?: Json | null
+          sla_days?: number | null
           slug?: string | null
           status?: string
           updated_at?: string
+          version_number?: number
         }
         Relationships: []
       }
@@ -2793,6 +2853,7 @@ export type Database = {
           kode: string | null
           nama: string
           pangkat_min: string | null
+          system_position: string | null
           updated_at: string
           urutan: number
         }
@@ -2805,6 +2866,7 @@ export type Database = {
           kode?: string | null
           nama: string
           pangkat_min?: string | null
+          system_position?: string | null
           updated_at?: string
           urutan?: number
         }
@@ -2817,6 +2879,7 @@ export type Database = {
           kode?: string | null
           nama?: string
           pangkat_min?: string | null
+          system_position?: string | null
           updated_at?: string
           urutan?: number
         }
@@ -4916,8 +4979,16 @@ export type Database = {
     }
     Functions: {
       count_permohonan_bulan_ini: { Args: never; Returns: number }
+      fn_doc_next_number: {
+        Args: { _category?: string; _opd_id?: string; _rule_id: string }
+        Returns: string
+      }
       get_user_desa: { Args: { _user_id: string }; Returns: string }
       get_user_opd: { Args: { _user_id: string }; Returns: string }
+      has_permission: {
+        Args: { _permission_code: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
