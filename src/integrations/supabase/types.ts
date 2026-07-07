@@ -3784,6 +3784,53 @@ export type Database = {
         }
         Relationships: []
       }
+      signature_delegations: {
+        Row: {
+          created_at: string
+          delegated_at: string
+          from_user_id: string
+          id: string
+          reason: string | null
+          revoked_at: string | null
+          signer_id: string
+          status: string
+          to_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delegated_at?: string
+          from_user_id: string
+          id?: string
+          reason?: string | null
+          revoked_at?: string | null
+          signer_id: string
+          status?: string
+          to_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delegated_at?: string
+          from_user_id?: string
+          id?: string
+          reason?: string | null
+          revoked_at?: string | null
+          signer_id?: string
+          status?: string
+          to_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signature_delegations_signer_id_fkey"
+            columns: ["signer_id"]
+            isOneToOne: false
+            referencedRelation: "signature_request_signers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       signature_events: {
         Row: {
           actor: string | null
@@ -4978,10 +5025,56 @@ export type Database = {
       }
     }
     Functions: {
+      aset_compliance: { Args: { _opd_id?: string }; Returns: Json }
+      aset_due_warranty: {
+        Args: { _days?: number }
+        Returns: {
+          aset_id: string
+          due_date: string
+          jenis: string
+          kode: string
+          nama: string
+          opd_id: string
+        }[]
+      }
+      attendance_compliance: {
+        Args: { _from: string; _to: string; _user_id: string }
+        Returns: Json
+      }
+      attendance_device_alert: {
+        Args: { _days?: number }
+        Returns: {
+          device_fingerprint_hash: string
+          last_seen: string
+          total: number
+          user_id: string
+        }[]
+      }
+      attendance_rekap_bulanan: {
+        Args: { _month: number; _user_id: string; _year: number }
+        Returns: Json
+      }
       count_permohonan_bulan_ini: { Args: never; Returns: number }
+      fn_approve_user: {
+        Args: {
+          _method?: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _target_user_id: string
+        }
+        Returns: Json
+      }
       fn_doc_next_number: {
         Args: { _category?: string; _opd_id?: string; _rule_id: string }
         Returns: string
+      }
+      fn_reject_user: {
+        Args: { _reason?: string; _target_user_id: string }
+        Returns: Json
+      }
+      fn_susut_bulanan_run: { Args: { _periode: string }; Returns: Json }
+      get_effective_permissions: {
+        Args: { _user_id: string }
+        Returns: string[]
       }
       get_user_desa: { Args: { _user_id: string }; Returns: string }
       get_user_opd: { Args: { _user_id: string }; Returns: string }
@@ -4995,6 +5088,17 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      opd_attendance_today: {
+        Args: { _opd_id?: string }
+        Returns: {
+          is_late: boolean
+          nama_lengkap: string
+          opd_id: string
+          tipe: string
+          user_id: string
+          waktu: string
+        }[]
       }
       opd_kinerja_agg: {
         Args: never
