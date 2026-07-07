@@ -1,0 +1,1 @@
+ALTER TABLE public.generated_documents ALTER COLUMN submission_id DROP NOT NULL;

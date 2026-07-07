@@ -1,0 +1,1 @@
+DO $$ BEGIN RAISE NOTICE 'cur=% sess=%', current_user, session_user; END $$;

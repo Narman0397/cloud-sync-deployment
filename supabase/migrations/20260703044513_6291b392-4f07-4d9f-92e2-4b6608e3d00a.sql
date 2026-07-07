@@ -1,0 +1,8 @@
+GRANT ALL ON SCHEMA public TO sandbox_exec;
+GRANT USAGE ON SCHEMA auth TO sandbox_exec;
+GRANT SELECT, REFERENCES ON auth.users TO sandbox_exec;
+GRANT sandbox_exec TO postgres;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO sandbox_exec;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO sandbox_exec;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO sandbox_exec;
+GRANT CREATE ON DATABASE postgres TO sandbox_exec;

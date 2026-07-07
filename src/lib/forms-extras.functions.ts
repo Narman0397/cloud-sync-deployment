@@ -1,0 +1,415 @@
+// Form Builder enhancements: komentar review, export xlsx, migrasi dari dataset_template, open data publik.
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { checkRateLimit, enforcePublicRateLimit } from "@/integrations/supabase/rate-limit.server";
+import { getUserContext } from "@/features/rbac/guards";
+
+async function ctxOf(userId: string) {
+  const c = await getUserContext(supabaseAdmin, userId);
+  return {
+    isSuper: c.isSuper,
+    isAdminOpd: c.isAdminOpd,
+    isAsn: c.isAsn,
+    isPimpinan: c.isPimpinan,
+    opdId: c.opdId,
+  };
+}
+
+// ===== Komentar submission =====
+export const listSubmissionComments = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ submission_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data }) => {
+    const { data: rows, error } = await supabaseAdmin
+      .from("form_submission_comment")
+      .select("id,pesan,internal_only,created_at,oleh, oleh_profile:profiles!oleh(nama_lengkap)")
+      .eq("submission_id", data.submission_id)
+      .order("created_at", { ascending: true })
+      .limit(500);
+    if (error) throw new Error(error.message);
+    return { rows: rows ?? [] };
+  });
+
+export const addSubmissionComment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        submission_id: z.string().uuid(),
+        pesan: z.string().trim().min(1).max(2000),
+        internal_only: z.boolean().default(false),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const c = await ctxOf(context.userId);
+    if (data.internal_only && !c.isAdminOpd && !c.isSuper) {
+      throw new Error("Hanya admin yang bisa membuat catatan internal");
+    }
+    const { error } = await supabaseAdmin.from("form_submission_comment").insert({
+      submission_id: data.submission_id,
+      oleh: context.userId,
+      pesan: data.pesan,
+      internal_only: data.internal_only,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ===== Migrasi dataset_template lama → forms =====
+export const migrateDatasetToForm = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ template_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const c = await ctxOf(context.userId);
+    if (!c.isSuper) throw new Error("Forbidden");
+    const { data: newId, error } = await supabaseAdmin.rpc("migrasi_dataset_ke_forms", {
+      _template_id: data.template_id,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, form_id: newId };
+  });
+
+// ===== Set forms.is_public / slug =====
+export const setFormPublic = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        form_id: z.string().uuid(),
+        is_public: z.boolean(),
+        show_in_open_data: z.boolean().optional(),
+        slug: z
+          .string()
+          .regex(/^[a-z0-9-]{3,80}$/)
+          .optional()
+          .nullable(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const c = await ctxOf(context.userId);
+    const { data: f } = await supabaseAdmin
+      .from("forms")
+      .select("opd_pemilik_id")
+      .eq("id", data.form_id)
+      .maybeSingle();
+    if (!f) throw new Error("Form tidak ditemukan");
+    if (!c.isSuper && !(c.isAdminOpd && c.opdId === f.opd_pemilik_id)) throw new Error("Forbidden");
+    const upd: { is_public: boolean; slug?: string | null; show_in_open_data?: boolean } = {
+      is_public: data.is_public,
+    };
+    if (data.slug !== undefined) upd.slug = data.slug;
+    if (data.show_in_open_data !== undefined) upd.show_in_open_data = data.show_in_open_data;
+    const { error } = await supabaseAdmin.from("forms").update(upd).eq("id", data.form_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ===== Open data publik: list & detail tanpa auth =====
+export const listPublicForms = createServerFn({ method: "GET" }).handler(async () => {
+  const { data, error } = await supabaseAdmin
+    .from("forms")
+    .select("id,judul,deskripsi,slug,published_at, opd:opd!opd_pemilik_id(nama,singkatan)")
+    .eq("status", "published")
+    .eq("is_public", true)
+    .order("published_at", { ascending: false })
+    .limit(200);
+  if (error) throw new Error(error.message);
+  return { rows: data ?? [] };
+});
+
+// ===== Portal Data Terbuka: search + pagination server-side =====
+export const searchPublicForms = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        q: z.string().trim().max(120).optional().default(""),
+        opd: z.string().trim().max(120).optional().default(""),
+        page: z.number().int().min(1).max(500).default(1),
+        pageSize: z.number().int().min(1).max(50).default(12),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data }) => {
+    await enforcePublicRateLimit("public_forms_search", { limit: 60, windowSec: 60 });
+    const from = (data.page - 1) * data.pageSize;
+    const to = from + data.pageSize - 1;
+    let q = supabaseAdmin
+      .from("forms")
+      .select(
+        "id,judul,deskripsi,slug,published_at, opd:opd!opd_pemilik_id(nama,singkatan)",
+        { count: "exact" },
+      )
+      .eq("status", "published")
+      .eq("is_public", true)
+      .order("published_at", { ascending: false })
+      .range(from, to);
+    if (data.q) q = q.or(`judul.ilike.%${data.q}%,deskripsi.ilike.%${data.q}%`);
+    if (data.opd) q = q.eq("opd.nama", data.opd);
+    const { data: rows, error, count } = await q;
+    if (error) throw new Error(error.message);
+    return { rows: rows ?? [], total: count ?? 0, page: data.page, pageSize: data.pageSize };
+  });
+
+// ===== Public CSV/JSON download untuk dataset terbuka =====
+function toCsv(headers: string[], rows: Array<Record<string, unknown>>): string {
+  const esc = (v: unknown) => {
+    if (v === null || v === undefined) return "";
+    const s = typeof v === "string" ? v : JSON.stringify(v);
+    if (/[",\n\r;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+  const head = headers.map(esc).join(",");
+  const body = rows.map((r) => headers.map((h) => esc(r[h])).join(",")).join("\n");
+  return `${head}\n${body}\n`;
+}
+
+export const downloadPublicFormData = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        slug: z.string().min(3).max(80),
+        format: z.enum(["csv", "json"]).default("csv"),
+        limit: z.number().int().min(1).max(5000).default(1000),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data }) => {
+    await enforcePublicRateLimit("public_forms_download", { limit: 10, windowSec: 60 });
+    const { data: form } = await supabaseAdmin
+      .from("forms")
+      .select("id,judul,publish_status")
+      .eq("slug", data.slug)
+      .eq("status", "published")
+      .eq("is_public", true)
+      .maybeSingle();
+    if (!form) throw new Error("Dataset tidak ditemukan atau belum dipublikasi");
+    // Honour 2-tier publish: hanya yang sudah approved boleh diunduh anonim
+    if (form.publish_status && form.publish_status !== "approved") {
+      throw new Error("Dataset menunggu persetujuan publikasi");
+    }
+    const { data: fields } = await supabaseAdmin
+      .from("form_fields")
+      .select("kode,label,urutan")
+      .eq("form_id", form.id)
+      .order("urutan");
+    const cols = (fields ?? []).map((f) => ({ kode: f.kode, label: f.label }));
+    const { data: subs } = await supabaseAdmin
+      .from("form_submissions")
+      .select("id,data,submitted_at,status")
+      .eq("form_id", form.id)
+      .eq("status", "approved")
+      .order("submitted_at", { ascending: false })
+      .limit(data.limit);
+    const rows = (subs ?? []).map((s) => {
+      const d = (s.data ?? {}) as Record<string, unknown>;
+      const r: Record<string, unknown> = { _id: s.id, _submitted_at: s.submitted_at };
+      for (const c of cols) r[c.kode] = d[c.kode] ?? "";
+      return r;
+    });
+    const filename = `${data.slug}-${Date.now()}.${data.format}`;
+    if (data.format === "json") {
+      return {
+        filename,
+        contentType: "application/json; charset=utf-8",
+        body: JSON.stringify({ dataset: form.judul, count: rows.length, fields: cols, rows }, null, 2),
+      };
+    }
+    const headers = ["_id", "_submitted_at", ...cols.map((c) => c.kode)];
+    return {
+      filename,
+      contentType: "text/csv; charset=utf-8",
+      body: toCsv(headers, rows),
+    };
+  });
+
+// ===== Alur publikasi 2-tingkat untuk dataset terbuka =====
+export const requestPublishForm = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ form_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const c = await ctxOf(context.userId);
+    const { data: f } = await supabaseAdmin
+      .from("forms")
+      .select("opd_pemilik_id")
+      .eq("id", data.form_id)
+      .maybeSingle();
+    if (!f) throw new Error("Form tidak ditemukan");
+    if (!c.isSuper && !(c.isAdminOpd && c.opdId === f.opd_pemilik_id) && !c.isAsn)
+      throw new Error("Forbidden");
+    const { error } = await supabaseAdmin
+      .from("forms")
+      .update({
+        publish_status: "requested",
+        publish_requested_by: context.userId,
+        publish_requested_at: new Date().toISOString(),
+        publish_reject_reason: null,
+      })
+      .eq("id", data.form_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const decidePublishForm = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        form_id: z.string().uuid(),
+        decision: z.enum(["approved", "rejected"]),
+        reason: z.string().trim().max(500).optional().nullable(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const c = await ctxOf(context.userId);
+    if (!c.isSuper && !c.isPimpinan && !c.isAdminOpd) throw new Error("Forbidden");
+    const now = new Date().toISOString();
+    const base = {
+      publish_status: data.decision,
+      publish_approved_by: context.userId,
+      publish_approved_at: now,
+      publish_reject_reason: data.decision === "rejected" ? data.reason ?? null : null,
+    };
+    const upd =
+      data.decision === "approved"
+        ? { ...base, is_public: true, status: "published" as const, published_at: now }
+        : base;
+    const { error } = await supabaseAdmin.from("forms").update(upd).eq("id", data.form_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getPublicFormBySlug = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) => z.object({ slug: z.string().min(3).max(80) }).parse(i))
+  .handler(async ({ data }) => {
+    const { data: form, error } = await supabaseAdmin
+      .from("forms")
+      .select("id,judul,deskripsi,slug,published_at, opd:opd!opd_pemilik_id(nama,singkatan)")
+      .eq("slug", data.slug)
+      .eq("status", "published")
+      .eq("is_public", true)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!form) return { form: null, fields: [], stats: { total: 0 } };
+    const { data: fields } = await supabaseAdmin
+      .from("form_fields")
+      .select("kode,label,tipe,urutan")
+      .eq("form_id", form.id)
+      .order("urutan");
+    const { count } = await supabaseAdmin
+      .from("form_submissions")
+      .select("id", { count: "exact", head: true })
+      .eq("form_id", form.id)
+      .eq("status", "submitted");
+    return { form, fields: fields ?? [], stats: { total: count ?? 0 } };
+  });
+
+// ===== Export Form Submissions ke XLSX =====
+export const exportFormSubmissionsXlsx = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        form_id: z.string().uuid(),
+        status: z.enum(["submitted", "approved", "rejected", "draft"]).optional().nullable(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const c = await ctxOf(context.userId);
+    if (!c.isSuper && !c.isAdminOpd && !c.isPimpinan) throw new Error("Forbidden");
+    const rl = await checkRateLimit(context.userId, "form_export", 20, 60);
+    if (!rl.ok) throw new Error("Terlalu banyak ekspor");
+
+    const { data: form } = await supabaseAdmin
+      .from("forms")
+      .select("id,judul,opd_pemilik_id, opd:opd!opd_pemilik_id(nama,singkatan)")
+      .eq("id", data.form_id)
+      .single();
+    if (!form) throw new Error("Form tidak ditemukan");
+    if (!c.isSuper && c.opdId !== form.opd_pemilik_id) throw new Error("Bukan form OPD Anda");
+
+    const { data: fields } = await supabaseAdmin
+      .from("form_fields")
+      .select("kode,label,tipe,urutan")
+      .eq("form_id", data.form_id)
+      .order("urutan");
+    const cols = fields ?? [];
+
+    let subQ = supabaseAdmin
+      .from("form_submissions")
+      .select(
+        "id,data,status,submitted_at,opd_id, user:profiles!user_id(nama_lengkap,nip,jabatan), opd:opd!opd_id(nama,singkatan)",
+      )
+      .eq("form_id", data.form_id)
+      .limit(5000);
+    if (data.status) subQ = subQ.eq("status", data.status);
+    const { data: subs } = await subQ;
+
+    const { buildXlsxBuffer } = await import("./xlsx-writer.server");
+    const columns = [
+      { header: "No", key: "no", width: 5 },
+      { header: "OPD", key: "opd", width: 26 },
+      { header: "Nama", key: "nama", width: 26 },
+      { header: "NIP", key: "nip", width: 22 },
+      { header: "Status", key: "status", width: 14 },
+      ...cols.map((k) => ({
+        header: k.label,
+        key: k.kode,
+        width: Math.max(14, Math.min(40, k.label.length + 6)),
+      })),
+      { header: "Submitted", key: "waktu", width: 22 },
+    ];
+    const rowsOut = (subs ?? []).map((s, i) => {
+      const u = s.user as { nama_lengkap?: string; nip?: string } | null;
+      const o = s.opd as { nama?: string } | null;
+      const d = (s.data ?? {}) as Record<string, unknown>;
+      const row: Record<string, unknown> = {
+        no: i + 1,
+        opd: o?.nama ?? "-",
+        nama: u?.nama_lengkap ?? "-",
+        nip: u?.nip ?? "-",
+        status: s.status,
+        waktu: s.submitted_at ? new Date(s.submitted_at).toLocaleString("id-ID") : "-",
+      };
+      for (const k of cols) row[k.kode] = (d[k.kode] ?? "") as unknown;
+      return row;
+    });
+
+    const buffer = buildXlsxBuffer([{ name: "Submissions", columns, rows: rowsOut }]);
+    const path = `forms/${data.form_id}/${Date.now()}.xlsx`;
+    const { error: upErr } = await supabaseAdmin.storage.from("share-files").upload(path, buffer, {
+      contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      upsert: true,
+    });
+    if (upErr) throw new Error(upErr.message);
+    const { data: signed } = await supabaseAdmin.storage
+      .from("share-files")
+      .createSignedUrl(path, 60 * 60);
+    return {
+      url: signed?.signedUrl ?? "",
+      filename: `form-${data.form_id}-${Date.now()}.xlsx`,
+      count: (subs ?? []).length,
+    };
+  });
+
+// ===== Version diff helper =====
+export const getSubmissionVersions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ submission_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data }) => {
+    const { data: rows, error } = await supabaseAdmin
+      .from("form_submission_versions")
+      .select(
+        "id,version,data,files,created_at,created_by, oleh_profile:profiles!created_by(nama_lengkap)",
+      )
+      .eq("submission_id", data.submission_id)
+      .order("version", { ascending: false })
+      .limit(50);
+    if (error) throw new Error(error.message);
+    return { rows: rows ?? [] };
+  });

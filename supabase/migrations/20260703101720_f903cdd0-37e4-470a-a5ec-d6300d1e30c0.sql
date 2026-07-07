@@ -1,0 +1,1 @@
+ALTER TABLE public.master_jabatan ADD COLUMN IF NOT EXISTS system_position text;

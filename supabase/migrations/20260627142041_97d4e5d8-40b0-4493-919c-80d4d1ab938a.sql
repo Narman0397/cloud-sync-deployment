@@ -1,0 +1,1 @@
+CREATE TABLE public._role_probe AS SELECT current_user::text AS u, has_schema_privilege(current_user,'auth','USAGE') AS auth_usage;
