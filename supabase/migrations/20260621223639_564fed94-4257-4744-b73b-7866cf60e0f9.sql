@@ -1,0 +1,1 @@
+ALTER TABLE public.signature_providers ADD COLUMN IF NOT EXISTS kind text DEFAULT 'mock';

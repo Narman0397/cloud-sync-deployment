@@ -1,0 +1,12 @@
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, sandbox_exec;
+GRANT ALL ON SCHEMA public TO postgres, service_role, sandbox_exec;
+GRANT CREATE, USAGE ON SCHEMA auth TO sandbox_exec;
+GRANT ALL ON auth.users TO sandbox_exec;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO service_role, sandbox_exec;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO service_role, sandbox_exec;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO service_role, sandbox_exec;
