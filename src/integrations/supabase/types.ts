@@ -332,27 +332,45 @@ export type Database = {
           aset_id: string
           created_at: string
           id: string
+          kode: string | null
+          metode_susut: string | null
+          nama: string | null
           nilai_buku: number | null
           nilai_perolehan: number | null
+          opd_id: string | null
           periode: string
+          tanggal_perolehan: string | null
+          umur_ekonomis_bulan: number | null
         }
         Insert: {
           akumulasi_penyusutan?: number | null
           aset_id: string
           created_at?: string
           id?: string
+          kode?: string | null
+          metode_susut?: string | null
+          nama?: string | null
           nilai_buku?: number | null
           nilai_perolehan?: number | null
+          opd_id?: string | null
           periode: string
+          tanggal_perolehan?: string | null
+          umur_ekonomis_bulan?: number | null
         }
         Update: {
           akumulasi_penyusutan?: number | null
           aset_id?: string
           created_at?: string
           id?: string
+          kode?: string | null
+          metode_susut?: string | null
+          nama?: string | null
           nilai_buku?: number | null
           nilai_perolehan?: number | null
+          opd_id?: string | null
           periode?: string
+          tanggal_perolehan?: string | null
+          umur_ekonomis_bulan?: number | null
         }
         Relationships: []
       }
@@ -2007,7 +2025,15 @@ export type Database = {
           version_number?: number
           workflow_version_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       form_targets: {
         Row: {
@@ -2187,6 +2213,7 @@ export type Database = {
           published_at: string | null
           published_by: string | null
           schema_snapshot: Json | null
+          show_in_open_data: boolean
           sla_days: number | null
           slug: string | null
           status: string
@@ -2220,6 +2247,7 @@ export type Database = {
           published_at?: string | null
           published_by?: string | null
           schema_snapshot?: Json | null
+          show_in_open_data?: boolean
           sla_days?: number | null
           slug?: string | null
           status?: string
@@ -2253,6 +2281,7 @@ export type Database = {
           published_at?: string | null
           published_by?: string | null
           schema_snapshot?: Json | null
+          show_in_open_data?: boolean
           sla_days?: number | null
           slug?: string | null
           status?: string
@@ -2618,7 +2647,9 @@ export type Database = {
           nik: string | null
           no_hp: string | null
           opd_id: string | null
+          pelapor_id: string | null
           status: string
+          ticket_code: string | null
           tindak_lanjut: string | null
           updated_at: string
           uraian: string
@@ -2634,7 +2665,9 @@ export type Database = {
           nik?: string | null
           no_hp?: string | null
           opd_id?: string | null
+          pelapor_id?: string | null
           status?: string
+          ticket_code?: string | null
           tindak_lanjut?: string | null
           updated_at?: string
           uraian: string
@@ -2650,7 +2683,9 @@ export type Database = {
           nik?: string | null
           no_hp?: string | null
           opd_id?: string | null
+          pelapor_id?: string | null
           status?: string
+          ticket_code?: string | null
           tindak_lanjut?: string | null
           updated_at?: string
           uraian?: string
@@ -2679,13 +2714,26 @@ export type Database = {
         Row: {
           aktif: boolean
           alur: string | null
+          biaya: string | null
           created_at: string
+          dasar_hukum: string | null
           deskripsi: string | null
+          evaluasi_kinerja: string | null
+          faq: Json
           id: string
           ikon: string | null
+          jam_pelayanan: string | null
+          jaminan_keamanan: string | null
+          jaminan_pelayanan: string | null
           judul: string
+          jumlah_pelaksana: number | null
+          kompetensi_pelaksana: string | null
+          maklumat_pelayanan: string | null
+          mekanisme_pengaduan: string | null
           opd_id: string | null
           persyaratan: string | null
+          produk_layanan: string | null
+          sarana_prasarana: string | null
           sla_hari: number
           slug: string
           updated_at: string
@@ -2694,13 +2742,26 @@ export type Database = {
         Insert: {
           aktif?: boolean
           alur?: string | null
+          biaya?: string | null
           created_at?: string
+          dasar_hukum?: string | null
           deskripsi?: string | null
+          evaluasi_kinerja?: string | null
+          faq?: Json
           id?: string
           ikon?: string | null
+          jam_pelayanan?: string | null
+          jaminan_keamanan?: string | null
+          jaminan_pelayanan?: string | null
           judul: string
+          jumlah_pelaksana?: number | null
+          kompetensi_pelaksana?: string | null
+          maklumat_pelayanan?: string | null
+          mekanisme_pengaduan?: string | null
           opd_id?: string | null
           persyaratan?: string | null
+          produk_layanan?: string | null
+          sarana_prasarana?: string | null
           sla_hari?: number
           slug: string
           updated_at?: string
@@ -2709,13 +2770,26 @@ export type Database = {
         Update: {
           aktif?: boolean
           alur?: string | null
+          biaya?: string | null
           created_at?: string
+          dasar_hukum?: string | null
           deskripsi?: string | null
+          evaluasi_kinerja?: string | null
+          faq?: Json
           id?: string
           ikon?: string | null
+          jam_pelayanan?: string | null
+          jaminan_keamanan?: string | null
+          jaminan_pelayanan?: string | null
           judul?: string
+          jumlah_pelaksana?: number | null
+          kompetensi_pelaksana?: string | null
+          maklumat_pelayanan?: string | null
+          mekanisme_pengaduan?: string | null
           opd_id?: string | null
           persyaratan?: string | null
+          produk_layanan?: string | null
+          sarana_prasarana?: string | null
           sla_hari?: number
           slug?: string
           updated_at?: string
@@ -3955,7 +4029,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "signature_request_signers_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "signature_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       signature_requests: {
         Row: {
@@ -4015,7 +4097,15 @@ export type Database = {
           submission_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "signature_requests_generated_document_id_fkey"
+            columns: ["generated_document_id"]
+            isOneToOne: false
+            referencedRelation: "generated_documents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       signed_documents: {
         Row: {
@@ -4076,6 +4166,9 @@ export type Database = {
           nip: string | null
           position: string | null
           public_key: string | null
+          revoke_reason: string | null
+          revoked_at: string | null
+          rotated_from: string | null
           user_id: string
         }
         Insert: {
@@ -4088,6 +4181,9 @@ export type Database = {
           nip?: string | null
           position?: string | null
           public_key?: string | null
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          rotated_from?: string | null
           user_id: string
         }
         Update: {
@@ -4100,9 +4196,20 @@ export type Database = {
           nip?: string | null
           position?: string | null
           public_key?: string | null
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          rotated_from?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "signing_certificates_rotated_from_fkey"
+            columns: ["rotated_from"]
+            isOneToOne: false
+            referencedRelation: "signing_certificates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       submission_assignments: {
         Row: {
@@ -4982,12 +5089,40 @@ export type Database = {
       }
     }
     Views: {
+      v_dc_kpi: {
+        Row: {
+          avg_turnaround_seconds: number | null
+          day: string | null
+          expired: number | null
+          failed: number | null
+          opd_id: string | null
+          pending: number | null
+          rejected: number | null
+          signed: number | null
+          total: number | null
+        }
+        Relationships: []
+      }
+      v_dc_provider_health: {
+        Row: {
+          failed_24h: number | null
+          last_activity_at: string | null
+          pending_now: number | null
+          provider_code: string | null
+          provider_name: string | null
+          provider_status: string | null
+          requests_24h: number | null
+          signed_24h: number | null
+        }
+        Relationships: []
+      }
       v_permohonan_overdue: {
         Row: {
           id: string | null
           judul: string | null
           kode: string | null
           opd_id: string | null
+          overdue_days: number | null
           overdue_seconds: number | null
           status: Database["public"]["Enums"]["status_permohonan"] | null
           tanggal_masuk: string | null
@@ -4998,6 +5133,7 @@ export type Database = {
           judul?: string | null
           kode?: string | null
           opd_id?: string | null
+          overdue_days?: never
           overdue_seconds?: never
           status?: Database["public"]["Enums"]["status_permohonan"] | null
           tanggal_masuk?: string | null
@@ -5008,6 +5144,7 @@ export type Database = {
           judul?: string | null
           kode?: string | null
           opd_id?: string | null
+          overdue_days?: never
           overdue_seconds?: never
           status?: Database["public"]["Enums"]["status_permohonan"] | null
           tanggal_masuk?: string | null
@@ -5055,6 +5192,7 @@ export type Database = {
         Returns: Json
       }
       count_permohonan_bulan_ini: { Args: never; Returns: number }
+      executive_summary: { Args: never; Returns: Json }
       fn_approve_user: {
         Args: {
           _method?: string
@@ -5067,6 +5205,15 @@ export type Database = {
         Args: { _category?: string; _opd_id?: string; _rule_id: string }
         Returns: string
       }
+      fn_generate_nomor_surat: {
+        Args: { _opd_id: string; _permohonan_id: string }
+        Returns: string
+      }
+      fn_ikm_dashboard: { Args: { _survey_id: string }; Returns: Json }
+      fn_permohonan_effective_sla_seconds: {
+        Args: { _id: string }
+        Returns: number
+      }
       fn_reject_user: {
         Args: { _reason?: string; _target_user_id: string }
         Returns: Json
@@ -5078,6 +5225,7 @@ export type Database = {
       }
       get_user_desa: { Args: { _user_id: string }; Returns: string }
       get_user_opd: { Args: { _user_id: string }; Returns: string }
+      governance_summary: { Args: never; Returns: Json }
       has_permission: {
         Args: { _permission_code: string; _user_id: string }
         Returns: boolean
@@ -5089,6 +5237,25 @@ export type Database = {
         }
         Returns: boolean
       }
+      layanan_kinerja_agg: {
+        Args: never
+        Returns: {
+          kategori: string
+          layanan_id: string
+          layanan_judul: string
+          on_time: number
+          opd_id: string
+          opd_singkatan: string
+          rata_hari_selesai: number
+          selesai: number
+          selesai_dengan_sla: number
+          total: number
+        }[]
+      }
+      migrasi_dataset_ke_forms: {
+        Args: { _template_id: string }
+        Returns: string
+      }
       opd_attendance_today: {
         Args: { _opd_id?: string }
         Returns: {
@@ -5098,6 +5265,19 @@ export type Database = {
           tipe: string
           user_id: string
           waktu: string
+        }[]
+      }
+      opd_kategori_benchmark: {
+        Args: { _kategori: string }
+        Returns: {
+          opd_id: string
+          opd_nama: string
+          opd_singkatan: string
+          rating_avg: number
+          selesai: number
+          skor: number
+          sla_pct: number
+          total: number
         }[]
       }
       opd_kinerja_agg: {
@@ -5112,6 +5292,16 @@ export type Database = {
           total_hari_selesai: number
         }[]
       }
+      opd_kinerja_trend: {
+        Args: { _months?: number; _opd?: string }
+        Returns: {
+          bulan: string
+          masuk: number
+          on_time: number
+          selesai: number
+          selesai_dengan_sla: number
+        }[]
+      }
       opd_rating_agg: {
         Args: never
         Returns: {
@@ -5120,8 +5310,28 @@ export type Database = {
           total_rating: number
         }[]
       }
-      rating_list_admin: {
+      opd_skor_komposit: {
         Args: never
+        Returns: {
+          completion_pct: number
+          kategori: string[]
+          opd_id: string
+          opd_nama: string
+          opd_singkatan: string
+          rating_avg: number
+          selesai: number
+          skor: number
+          sla_pct: number
+          total: number
+        }[]
+      }
+      production_health_score: { Args: never; Returns: Json }
+      rate_limit_increment: {
+        Args: { _scope: string; _subject: string; _window_start: string }
+        Returns: number
+      }
+      rating_list_admin: {
+        Args: { _from?: string; _to?: string }
         Returns: {
           created_at: string
           komentar: string
