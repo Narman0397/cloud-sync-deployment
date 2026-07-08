@@ -76,6 +76,12 @@ export function TemplatesView() {
               Template menentukan tampilan dan isi dokumen. Setelah <strong>Terbitkan</strong>, template dapat dipakai untuk membuat dokumen baru lewat Wizard.
             </HelpHint>
             <button
+              onClick={() => setOpenImport(true)}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-2 text-sm font-semibold hover:bg-muted"
+            >
+              <FileUp className="h-4 w-4" /> Impor dari Word
+            </button>
+            <button
               onClick={() => setOpenNew(true)}
               className="inline-flex items-center gap-1 rounded-md bg-gradient-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-soft"
             >
