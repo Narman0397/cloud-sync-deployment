@@ -249,6 +249,7 @@ export const generateQrLabelPdf = createServerFn({ method: "POST" })
     if (!rows || rows.length === 0) throw new Error("Tidak ada aset yang berhak Anda cetak");
     const base = (data.base_url ?? "").replace(/\/+$/, "") || "";
 
+    const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
     const pdf = await PDFDocument.create();
     const font = await pdf.embedFont(StandardFonts.Helvetica);
     const fontB = await pdf.embedFont(StandardFonts.HelveticaBold);
