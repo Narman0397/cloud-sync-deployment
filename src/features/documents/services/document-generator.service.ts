@@ -1,6 +1,9 @@
 // Phase 3A — Document generator: merge + produce HTML/PDF/DOCX bytes.
 import { mergeTemplate, type MergeContext } from "../placeholder/engine";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+// NOTE: pdf-lib di-import lazy di dalam renderPdf() agar module init tidak crash
+// di Worker runtime (pdf-lib menggunakan tslib.__extends yang bermasalah saat
+// top-level import di Cloudflare Workers). Tanpa lazy import, semua server fn
+// di documents.functions.ts (yang mengimpor generator ini) akan gagal init.
 
 export type DocKind = "html" | "pdf" | "docx";
 
@@ -31,6 +34,7 @@ function htmlToPlainBlocks(html: string): string[] {
 }
 
 async function renderPdf(html: string): Promise<Uint8Array> {
+  const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
