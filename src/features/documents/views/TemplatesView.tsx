@@ -3,10 +3,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { docListTemplates, docCreateTemplate } from "@/lib/documents.functions";
-import { Plus, FileText, ExternalLink, Loader2 } from "lucide-react";
+import { Plus, FileText, ExternalLink, Loader2, FileUp } from "lucide-react";
 import { PageHeader } from "@/components/ui-kit/PageHeader";
 import { HelpHint } from "@/components/ui-kit/HelpHint";
 import { StatusPill } from "@/components/ui-kit/StatusPill";
+import { WordImportDialog } from "@/features/documents/import/WordImportDialog";
 
 type Row = {
   id: string;
@@ -25,6 +26,7 @@ export function TemplatesView() {
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
   const [openNew, setOpenNew] = useState(false);
+  const [openImport, setOpenImport] = useState(false);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<"html" | "pdf" | "docx">("html");
   const [busy, setBusy] = useState(false);
@@ -73,6 +75,12 @@ export function TemplatesView() {
             <HelpHint title="Apa itu template?">
               Template menentukan tampilan dan isi dokumen. Setelah <strong>Terbitkan</strong>, template dapat dipakai untuk membuat dokumen baru lewat Wizard.
             </HelpHint>
+            <button
+              onClick={() => setOpenImport(true)}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-2 text-sm font-semibold hover:bg-muted"
+            >
+              <FileUp className="h-4 w-4" /> Impor dari Word
+            </button>
             <button
               onClick={() => setOpenNew(true)}
               className="inline-flex items-center gap-1 rounded-md bg-gradient-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-soft"
@@ -181,6 +189,16 @@ export function TemplatesView() {
             </div>
           </div>
         </div>
+      )}
+
+      {openImport && (
+        <WordImportDialog
+          onClose={() => setOpenImport(false)}
+          onCreated={(id) => {
+            setOpenImport(false);
+            nav({ to: "/admin/document-center/templates/$id", params: { id } });
+          }}
+        />
       )}
     </div>
   );

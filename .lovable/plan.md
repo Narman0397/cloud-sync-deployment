@@ -1,27 +1,60 @@
-Saya akan lakukan verifikasi E2E dan perbaikan fokus pada tombol **Buka** di daftar Template Document Center.
 
-## Rencana
+# Impor Template dari File Word (.docx)
 
-1. **Reproduksi dari awal**
-   - Login memakai sesi superadmin yang tersedia di preview development.
-   - Buka `/admin/document-center/templates`.
-   - Pastikan daftar template termuat.
-   - Klik tombol **Buka** pada salah satu row.
-   - Catat hasil: URL berubah/tidak, halaman detail tampil/tidak, error console/network/server function ada/tidak.
+Fitur baru di Document Center: admin upload file `.docx` yang sudah ada, sistem otomatis mendeteksi baris seperti `Nama : ___` dan menggantinya jadi placeholder `{{submission.nama}}`. Layout Word asli dipertahankan.
 
-2. **Lacak titik gagal**
-   - Periksa apakah `<Link>` tombol **Buka** menghasilkan path detail yang benar: `/admin/document-center/templates/:id`.
-   - Periksa apakah route detail `admin.document-center.templates.$id` terdaftar dan dirender di dalam layout Document Center.
-   - Periksa server function `docGetTemplate`, `docListNumberingRules`, `docListPublishedForms`, dan `docFormFieldsCatalog` yang dipanggil saat halaman detail dibuka.
-   - Cocokkan query server function dengan schema database: `document_templates`, `document_template_versions`, `document_numbering_rules`, dan tabel form terkait.
+## Alur Pengguna
 
-3. **Perbaikan otomatis sesuai akar masalah**
-   - Jika klik tidak memicu navigasi: ganti tombol menjadi navigasi imperatif atau perbaiki konfigurasi `Link`/route path.
-   - Jika navigasi berhasil tapi halaman detail gagal load: tambahkan penanganan error di halaman detail dan perbaiki query/server function yang gagal.
-   - Jika schema tidak cocok: sesuaikan kode dengan schema yang ada atau tambahkan migrasi kecil yang aman bila kolom/tabel memang hilang.
-   - Jika masalah hanya muncul di mobile/overflow table: pastikan tombol tetap clickable dan tidak tertutup overlay/elemen lain.
+1. Halaman **Template** → tombol baru **"Impor dari Word"** (di samping "Template Baru").
+2. Upload `.docx` (maks 10 MB) → sistem simpan file asli ke storage.
+3. Sistem parsing dokumen dan menampilkan **daftar saran pemetaan otomatis**:
+   ```
+   Baris ditemukan               Placeholder yang disarankan
+   ─────────────────────────    ──────────────────────────────
+   Nama       : Budi Santoso  →  {{submission.nama}}      [✓]
+   NIP        : 19800101...   →  {{submission.nip}}       [✓]
+   Jabatan    : Kepala Seksi  →  {{submission.jabatan}}   [✓]
+   OPD        : Dinas Kominfo →  {{submission.opd}}       [✓]
+   Tanggal    : 08/07/2026    →  {{system.tanggal}}       [✓]
+   ```
+4. Admin bisa uncheck saran yang tidak diinginkan, lalu **"Simpan sebagai Template"**.
+5. Template tersimpan dengan status `draft`, siap dipakai untuk generate dokumen.
+6. Saat generate: engine mengganti token `{{...}}` di dalam `.docx` dengan data submission — hasilnya file Word dengan format/tabel/header sama persis dengan aslinya.
 
-4. **Verifikasi akhir E2E**
-   - Ulangi alur dari awal sampai akhir: daftar template → klik **Buka** → editor template tampil → ubah nama/deskripsi → Simpan → Preview → kembali ke daftar.
-   - Validasi tidak ada error console/network/server function pada alur tersebut.
-   - Ambil bukti visual halaman detail berhasil terbuka dan aksi dasar editor bekerja.
+## Detail Teknis
+
+### Library
+- **`docxtemplater`** + **`pizzip`** — mengganti token di dalam file `.docx` tanpa merusak layout. Pure JS, Worker-safe, standar industri untuk template Word.
+- **`mammoth`** — hanya dipakai server-side untuk mengekstrak teks polos guna deteksi pola label (bukan untuk render).
+
+### File Baru
+- `src/features/documents/import/word-parse.functions.ts` — server fn: terima `.docx` (base64), ekstrak teks via `mammoth`, jalankan regex `/^\s*(nama|nip|jabatan|opd|instansi|tanggal|nomor\s*surat)\s*[:\-]\s*(.+)$/gim`, kembalikan array saran `{ label, matchedText, suggestedToken }`.
+- `src/features/documents/import/word-apply.functions.ts` — server fn: terima file + mapping yang dikonfirmasi, replace teks nilai dengan token `{{...}}` di dalam `.docx` (via docxtemplater raw XML replace), simpan file baru ke bucket `document-templates`, insert row ke `document_templates` (kolom baru `source_file_path` menunjuk file `.docx` bertoken).
+- `src/features/documents/import/WordImportDialog.tsx` — UI upload + tabel konfirmasi saran.
+- `src/features/documents/import/label-catalog.ts` — kamus label→placeholder (bisa diperluas nanti).
+
+### Perubahan
+- `src/routes/_authenticated/admin.document-center.templates.tsx` — tambah tombol "Impor dari Word", buka dialog.
+- `src/features/documents/services/document-generator.service.ts` — bila template punya `source_file_path` (`.docx`), gunakan docxtemplater untuk render; jika tidak, tetap pakai jalur HTML lama.
+- Migrasi: tambah kolom `source_file_path text` dan `source_type text default 'html'` di `document_templates`.
+- Bucket storage baru `document-templates` (private) untuk menyimpan file `.docx` sumber.
+
+### Kamus Label Awal
+```
+nama, nama lengkap, nama pemohon  → submission.nama
+nip                                → submission.nip
+jabatan                            → submission.jabatan
+opd, instansi, unit kerja          → submission.opd
+tanggal, tgl, tanggal pengajuan    → system.tanggal
+nomor surat, no. surat             → document.nomor_surat
+```
+
+## Batasan
+- Hanya `.docx` (bukan `.doc` lama). Untuk `.doc`, user save-as `.docx` dulu.
+- Deteksi otomatis bekerja untuk pola `Label : Value` di paragraf/tabel. Format lebih rumit bisa ditambahkan mapping manual di iterasi berikutnya.
+
+## Tidak Berubah
+- Katalog placeholder (`PLACEHOLDER_CATALOG`) dan engine (`mergeTemplate`) tetap dipakai untuk template berbasis HTML lama.
+- RBAC & auth (`requireSupabaseAuth`) — server fn baru pakai middleware yang sudah ada.
+
+Setelah plan disetujui, saya lanjut implementasi mulai dari migrasi + bucket, lalu server fn, terakhir UI.
