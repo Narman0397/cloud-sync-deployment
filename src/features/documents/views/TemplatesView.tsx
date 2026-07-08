@@ -3,10 +3,11 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { docListTemplates, docCreateTemplate } from "@/lib/documents.functions";
-import { Plus, FileText, ExternalLink, Loader2 } from "lucide-react";
+import { Plus, FileText, ExternalLink, Loader2, FileUp } from "lucide-react";
 import { PageHeader } from "@/components/ui-kit/PageHeader";
 import { HelpHint } from "@/components/ui-kit/HelpHint";
 import { StatusPill } from "@/components/ui-kit/StatusPill";
+import { WordImportDialog } from "@/features/documents/import/WordImportDialog";
 
 type Row = {
   id: string;
