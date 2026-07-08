@@ -26,6 +26,7 @@ export function TemplatesView() {
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
   const [openNew, setOpenNew] = useState(false);
+  const [openImport, setOpenImport] = useState(false);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<"html" | "pdf" | "docx">("html");
   const [busy, setBusy] = useState(false);
