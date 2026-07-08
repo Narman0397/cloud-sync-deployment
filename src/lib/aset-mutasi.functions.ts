@@ -4,8 +4,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getUserContext } from "@/features/rbac/guards";
-// qrcode imported lazily inside handler to avoid pngjs util.inherits crash on Worker module load
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+// qrcode & pdf-lib di-import lazy di dalam handler untuk menghindari crash saat
+// module load di Cloudflare Worker (pngjs util.inherits, tslib __extends).
 
 async function ctxOf(userId: string) {
   const c = await getUserContext(supabaseAdmin, userId);
