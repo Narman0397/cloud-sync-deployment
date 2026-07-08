@@ -190,6 +190,16 @@ export function TemplatesView() {
           </div>
         </div>
       )}
+
+      {openImport && (
+        <WordImportDialog
+          onClose={() => setOpenImport(false)}
+          onCreated={(id) => {
+            setOpenImport(false);
+            nav({ to: "/admin/document-center/templates/$id", params: { id } });
+          }}
+        />
+      )}
     </div>
   );
 }
