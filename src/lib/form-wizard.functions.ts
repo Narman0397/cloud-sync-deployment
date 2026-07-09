@@ -102,7 +102,7 @@ export const fwCommitNewForm = createServerFn({ method: "POST" })
           sla_days: z.number().int().min(0).max(365).optional().nullable(),
         }),
         employment: z.object({
-          types: z.array(z.enum(EMPLOYMENT_TYPES)).max(4).default([]),
+          types: z.array(z.enum(EMPLOYMENT_TYPES)).max(5).default([]),
         }),
         permissions: z.object({
           opd_pemilik_id: z.string().uuid().optional().nullable(),
