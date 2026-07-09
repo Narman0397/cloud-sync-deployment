@@ -3,6 +3,7 @@
 // Disimpan ke localStorage + tabel form_wizard_drafts (server, RLS per-user).
 import type { FormField } from "@/features/forms/schema/types";
 import type { PrefillMapping } from "@/features/forms/services/form-prefill.service";
+import type { Target } from "@/features/forms/builder/types";
 import type { Database } from "@/integrations/supabase/types";
 
 export type EmploymentType = Database["public"]["Enums"]["employment_type"];
@@ -57,6 +58,7 @@ export interface WizardNotifications {
 export interface WizardPayload {
   general: WizardGeneral;
   employment: WizardEmployment;
+  targets: Target[];
   design: { fields: FormField[] };
   permissions: WizardPermissions;
   notifications: WizardNotifications;
@@ -67,6 +69,7 @@ export function emptyPayload(): WizardPayload {
   return {
     general: { name: "", code: "", description: "", category: "", sla_days: null },
     employment: { types: [] },
+    targets: [],
     design: { fields: [] },
     permissions: {
       opd_pemilik_id: null,
