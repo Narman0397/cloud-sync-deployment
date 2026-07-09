@@ -11,7 +11,6 @@ import { PreviewPanel } from "@/features/forms/designer/PreviewPanel";
 import { fwCommitNewForm, fwLogFieldEvent } from "@/lib/form-wizard.functions";
 import {
   WIZARD_STEPS,
-  type EmploymentType,
   type WizardPayload,
   type WizardStep,
 } from "@/features/forms/wizard/types";
@@ -29,14 +28,7 @@ interface Props {
   isElevated: boolean;
 }
 
-const EMPLOYMENT: EmploymentType[] = ["PNS", "PPPK", "PPPK_PW", "NON_ASN", "THL"];
-const EMPLOYMENT_LABEL: Partial<Record<EmploymentType, string>> = {
-  PNS: "PNS",
-  PPPK: "PPPK",
-  PPPK_PW: "PPPK PW",
-  NON_ASN: "Non ASN",
-  THL: "THL",
-};
+// Employment types tetap disimpan di payload (kompat) tetapi tidak lagi diedit di wizard.
 
 const FRIENDLY_STEP_TITLE: Record<WizardStep, string> = {
   general: "Identitas form",
