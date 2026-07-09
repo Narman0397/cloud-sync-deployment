@@ -5,7 +5,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
-import { FormDesigner } from "@/features/forms/designer/FormDesigner";
 import { FormFieldsTab } from "@/features/forms/builder/FormFieldsTab";
 import { PreviewPanel } from "@/features/forms/designer/PreviewPanel";
 import { fwCommitNewForm, fwLogFieldEvent } from "@/lib/form-wizard.functions";
