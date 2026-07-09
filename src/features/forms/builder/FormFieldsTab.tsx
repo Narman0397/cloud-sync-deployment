@@ -67,12 +67,14 @@ export function FormFieldsTab({
   readOnly,
   busy,
   onSave,
+  hideSave,
 }: {
   fields: FormField[];
   setFields: (f: FormField[]) => void;
   readOnly: boolean;
   busy: boolean;
   onSave: () => void;
+  hideSave?: boolean;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const sensors = useSensors(
