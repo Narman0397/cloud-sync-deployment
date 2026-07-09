@@ -40,6 +40,7 @@ export function FormTargetsTab({
   setTargets,
   busy,
   onSave,
+  hideActions = false,
 }: {
   formId: string;
   formStatus: string;
@@ -47,6 +48,7 @@ export function FormTargetsTab({
   setTargets: (t: Target[]) => void;
   busy: boolean;
   onSave: () => void;
+  hideActions?: boolean;
 }) {
   const [opds, setOpds] = useState<Opd[]>([]);
   const [syncing, setSyncing] = useState(false);
@@ -220,14 +222,16 @@ export function FormTargetsTab({
         >
           <Plus className="h-4 w-4" /> Tambah Target
         </button>
-        <button
-          onClick={onSave}
-          disabled={busy}
-          className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
-        >
-          <Save className="h-4 w-4" /> Simpan Target
-        </button>
-        {formStatus === "published" && (
+        {!hideActions && (
+          <button
+            onClick={onSave}
+            disabled={busy}
+            className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+          >
+            <Save className="h-4 w-4" /> Simpan Target
+          </button>
+        )}
+        {!hideActions && formStatus === "published" && (
           <button
             onClick={async () => {
               if (

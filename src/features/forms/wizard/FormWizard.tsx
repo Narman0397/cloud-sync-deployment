@@ -6,11 +6,11 @@ import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 import { FormFieldsTab } from "@/features/forms/builder/FormFieldsTab";
+import { FormTargetsTab } from "@/features/forms/builder/FormTargetsTab";
 import { PreviewPanel } from "@/features/forms/designer/PreviewPanel";
 import { fwCommitNewForm, fwLogFieldEvent } from "@/lib/form-wizard.functions";
 import {
   WIZARD_STEPS,
-  type EmploymentType,
   type WizardPayload,
   type WizardStep,
 } from "@/features/forms/wizard/types";
@@ -28,14 +28,7 @@ interface Props {
   isElevated: boolean;
 }
 
-const EMPLOYMENT: EmploymentType[] = ["PNS", "PPPK", "PPPK_PW", "NON_ASN", "THL"];
-const EMPLOYMENT_LABEL: Partial<Record<EmploymentType, string>> = {
-  PNS: "PNS",
-  PPPK: "PPPK",
-  PPPK_PW: "PPPK PW",
-  NON_ASN: "Non ASN",
-  THL: "THL",
-};
+// Employment types tetap disimpan di payload (kompat) tetapi tidak lagi diedit di wizard.
 
 const FRIENDLY_STEP_TITLE: Record<WizardStep, string> = {
   general: "Identitas form",
@@ -49,7 +42,7 @@ const FRIENDLY_STEP_TITLE: Record<WizardStep, string> = {
 
 const FRIENDLY_STEP_HINT: Record<WizardStep, string> = {
   general: "Nama, kategori, batas waktu",
-  employment: "Tipe pegawai yang dituju",
+  employment: "Target pengisi (role/OPD/individu)",
   design: "Tambah & atur field input",
   validation: "Ringkasan aturan per field",
   permissions: "OPD pemilik & izin submit",
@@ -59,7 +52,7 @@ const FRIENDLY_STEP_HINT: Record<WizardStep, string> = {
 
 const FRIENDLY_STEP_LEAD: Record<WizardStep, string> = {
   general: "Beri nama yang mudah dikenali ASN. Kategori dan batas waktu (SLA) opsional.",
-  employment: "Tentukan tipe pegawai mana saja yang berhak melihat & mengisi form ini.",
+  employment: "Tentukan siapa yang harus mengisi form ini (per role, OPD, jenis ASN, jabatan, atau individu). Jika dikosongkan, default = semua user di OPD pemilik form.",
   design: "Tambah field input, atur urutan, dan setel properti tiap field.",
   validation: "Ringkasan aturan validasi semua field. Edit detail di step Susun field.",
   permissions: "Tentukan OPD pemilik dan apakah ASN boleh submit berulang.",
@@ -151,6 +144,7 @@ export function FormWizard(props: Props) {
             sla_days: state.payload.general.sla_days ?? null,
           },
           employment: { types: state.payload.employment.types },
+          targets: state.payload.targets,
           permissions: {
             opd_pemilik_id: state.payload.permissions.opd_pemilik_id,
             allow_multiple_submit: state.payload.permissions.allow_multiple_submit,
@@ -349,8 +343,10 @@ function SaveStatus({
 function validatePayload(p: WizardPayload): string[] {
   const errs: string[] = [];
   if (!p.general.name || p.general.name.trim().length < 3) errs.push("Nama form min 3 karakter");
-  if (p.employment.types.length === 0) errs.push("Pilih minimal 1 tipe pegawai");
   if (p.design.fields.length === 0) errs.push("Tambah minimal 1 field");
+  // Target opsional — kosong = default semua user di OPD pemilik.
+  const badTarget = p.targets.find((t) => !t.target_value);
+  if (badTarget) errs.push(`Lengkapi nilai target "${badTarget.target_type}"`);
   return errs;
 }
 
@@ -457,36 +453,23 @@ function EmploymentStep({
   payload: WizardPayload;
   setPayload: (u: (p: WizardPayload) => WizardPayload) => void;
 }) {
-  const selected = new Set(payload.employment.types);
-  function toggle(t: EmploymentType) {
-    const next = new Set(selected);
-    if (next.has(t)) next.delete(t);
-    else next.add(t);
-    setPayload((p) => ({ ...p, employment: { types: Array.from(next) } }));
-  }
   return (
-    <div>
-      <p className="mb-3 text-sm text-muted-foreground">
-        Pilih siapa yang berhak mengisi form ini berdasarkan tipe pegawai.
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Tentukan siapa yang harus mengisi form ini. Bisa berdasarkan <strong>Role</strong>,{" "}
+        <strong>OPD</strong>, <strong>Jenis ASN</strong>, <strong>Jabatan Sistem</strong>, atau
+        pilih <strong>Individu</strong> tertentu. Kosongkan untuk memakai default (semua user di
+        OPD pemilik form).
       </p>
-      <div className="flex flex-wrap gap-2">
-        {EMPLOYMENT.map((t) => {
-          const on = selected.has(t);
-          return (
-            <button
-              key={t}
-              onClick={() => toggle(t)}
-              className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
-                on
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {EMPLOYMENT_LABEL[t]}
-            </button>
-          );
-        })}
-      </div>
+      <FormTargetsTab
+        formId=""
+        formStatus="draft"
+        targets={payload.targets}
+        setTargets={(t) => setPayload((p) => ({ ...p, targets: t }))}
+        busy={false}
+        onSave={() => {}}
+        hideActions
+      />
     </div>
   );
 }
@@ -790,8 +773,8 @@ function ReviewStep({
           <Item label="Kategori" value={payload.general.category || "—"} />
           <Item label="SLA (hari)" value={payload.general.sla_days?.toString() ?? "—"} />
           <Item
-            label="Tipe Pegawai"
-            value={payload.employment.types.length ? payload.employment.types.join(", ") : "—"}
+            label="Target Pengisi"
+            value={payload.targets.length ? `${payload.targets.length} target` : "Default (OPD pemilik)"}
           />
           <Item label="Jumlah Field" value={String(payload.design.fields.length)} />
           <Item

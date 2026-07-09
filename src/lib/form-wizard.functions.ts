@@ -117,6 +117,15 @@ export const fwCommitNewForm = createServerFn({ method: "POST" })
             .nullable(),
         }),
         fields: fieldsArrayInput,
+        targets: z
+          .array(
+            z.object({
+              target_type: z.enum(["opd", "asn_type", "role", "position", "unit_kerja", "individu"]),
+              target_value: z.string().min(1).max(80),
+            }),
+          )
+          .max(200)
+          .default([]),
         publish: z.boolean().default(false),
       })
       .parse(input),
@@ -156,6 +165,19 @@ export const fwCommitNewForm = createServerFn({ method: "POST" })
       userId,
       createVersion: data.publish,
     });
+
+    // Persist form_targets (dipakai generateAssignmentsForForm saat publish, & bisa disinkron nanti).
+    if (data.targets.length > 0) {
+      const { error: tErr } = await supabaseAdmin.from("form_targets").insert(
+        data.targets.map((t) => ({
+          form_id: formId,
+          target_type: t.target_type,
+          target_value: t.target_value,
+        })),
+      );
+      if (tErr) throw new Error(tErr.message);
+    }
+
 
     let assignmentsCreated = 0;
     if (data.publish) {
