@@ -245,8 +245,8 @@ function LayananPage() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-elevated">
+        <div className="fixed inset-0 z-[60] overflow-y-auto overscroll-contain bg-black/40 p-4 pt-20 pb-8 flex items-start justify-center sm:items-center sm:pt-4">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-elevated my-auto">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-display text-lg font-bold">
                 {editing.id ? "Edit Layanan" : "Layanan Baru"}
