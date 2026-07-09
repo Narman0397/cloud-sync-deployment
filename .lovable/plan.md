@@ -1,60 +1,58 @@
 
-# Impor Template dari File Word (.docx)
+# Dokumen PDF: Peta Integrasi Template Document Center
 
-Fitur baru di Document Center: admin upload file `.docx` yang sudah ada, sistem otomatis mendeteksi baris seperti `Nama : ___` dan menggantinya jadi placeholder `{{submission.nama}}`. Layout Word asli dipertahankan.
+Membuat satu file PDF (`/mnt/documents/Peta-Integrasi-Template-DocumentCenter.pdf`) yang menjelaskan tiga hal yang Anda tanyakan. Output bersifat dokumentasi (bukan perubahan kode aplikasi).
 
-## Alur Pengguna
+## Isi PDF (± 6–8 halaman)
 
-1. Halaman **Template** → tombol baru **"Impor dari Word"** (di samping "Template Baru").
-2. Upload `.docx` (maks 10 MB) → sistem simpan file asli ke storage.
-3. Sistem parsing dokumen dan menampilkan **daftar saran pemetaan otomatis**:
-   ```
-   Baris ditemukan               Placeholder yang disarankan
-   ─────────────────────────    ──────────────────────────────
-   Nama       : Budi Santoso  →  {{submission.nama}}      [✓]
-   NIP        : 19800101...   →  {{submission.nip}}       [✓]
-   Jabatan    : Kepala Seksi  →  {{submission.jabatan}}   [✓]
-   OPD        : Dinas Kominfo →  {{submission.opd}}       [✓]
-   Tanggal    : 08/07/2026    →  {{system.tanggal}}       [✓]
-   ```
-4. Admin bisa uncheck saran yang tidak diinginkan, lalu **"Simpan sebagai Template"**.
-5. Template tersimpan dengan status `draft`, siap dipakai untuk generate dokumen.
-6. Saat generate: engine mengganti token `{{...}}` di dalam `.docx` dengan data submission — hasilnya file Word dengan format/tabel/header sama persis dengan aslinya.
+### Bagian 1 — Hubungan Template Publish dengan Modul Lain
+Untuk setiap modul, dijelaskan: *siapa yang memicu (role)* → *template apa yang dipakai* → *dokumen keluaran* → *alur TTE*.
 
-## Detail Teknis
+- **Pelayanan Publik** (Warga, Petugas Loket, Verifikator OPD, Kepala OPD)
+  - Permohonan layanan → template Surat Keterangan / SK / Rekomendasi → antrian TTD → dokumen final + QR verifikasi publik (`/verify/:token`).
+- **Kinerja OPD** (Admin OPD, Kepala OPD, Eksekutif)
+  - Template Laporan Kinerja / Rekap Bulanan yang menarik data dari dashboard-overview & indikator.
+- **Berbagi Data / Data Terbuka** (Admin Data, Wali Data OPD)
+  - Template Berita Acara Serah Terima Data, MoU Pertukaran Data.
+- **Manajemen ASN** (Admin Kepegawaian, ASN/PNS, Kepala OPD)
+  - Template SK Kenaikan Pangkat, Cuti, Tugas Belajar, Mutasi — placeholder `submission.nama`, `submission.nip`, `submission.jabatan` otomatis dari profil ASN.
+- **Manajemen Aset** (Admin Aset, Bendahara Barang, Kepala OPD)
+  - Template Berita Acara Serah Terima Aset, Penghapusan Aset, Peminjaman.
 
-### Library
-- **`docxtemplater`** + **`pizzip`** — mengganti token di dalam file `.docx` tanpa merusak layout. Pure JS, Worker-safe, standar industri untuk template Word.
-- **`mammoth`** — hanya dipakai server-side untuk mengekstrak teks polos guna deteksi pola label (bukan untuk render).
+Disertai **matriks role × modul × jenis template** dalam bentuk tabel, dan **diagram alur** template → submission → generator → TTD → arsip.
 
-### File Baru
-- `src/features/documents/import/word-parse.functions.ts` — server fn: terima `.docx` (base64), ekstrak teks via `mammoth`, jalankan regex `/^\s*(nama|nip|jabatan|opd|instansi|tanggal|nomor\s*surat)\s*[:\-]\s*(.+)$/gim`, kembalikan array saran `{ label, matchedText, suggestedToken }`.
-- `src/features/documents/import/word-apply.functions.ts` — server fn: terima file + mapping yang dikonfirmasi, replace teks nilai dengan token `{{...}}` di dalam `.docx` (via docxtemplater raw XML replace), simpan file baru ke bucket `document-templates`, insert row ke `document_templates` (kolom baru `source_file_path` menunjuk file `.docx` bertoken).
-- `src/features/documents/import/WordImportDialog.tsx` — UI upload + tabel konfirmasi saran.
-- `src/features/documents/import/label-catalog.ts` — kamus label→placeholder (bisa diperluas nanti).
+### Bagian 2 — Perbedaan Template (Document Center) vs Form Builder
+Tabel perbandingan singkat:
 
-### Perubahan
-- `src/routes/_authenticated/admin.document-center.templates.tsx` — tambah tombol "Impor dari Word", buka dialog.
-- `src/features/documents/services/document-generator.service.ts` — bila template punya `source_file_path` (`.docx`), gunakan docxtemplater untuk render; jika tidak, tetap pakai jalur HTML lama.
-- Migrasi: tambah kolom `source_file_path text` dan `source_type text default 'html'` di `document_templates`.
-- Bucket storage baru `document-templates` (private) untuk menyimpan file `.docx` sumber.
+| Aspek | Template Document Center | Form Builder |
+|---|---|---|
+| Tujuan | Menghasilkan **dokumen resmi** (surat/SK/berita acara) | Mengumpulkan **data/input** dari pemohon |
+| Output | File PDF/DOCX ber-TTE + QR | Baris data submission untuk diproses workflow |
+| Isi | HTML/Word + placeholder `{{...}}` | Field (text, select, upload, dsb.) + validasi |
+| Pemakai akhir | Pejabat penandatangan & penerima dokumen | Warga / ASN yang mengajukan |
+| Alur setelahnya | Antrian TTD → arsip → verifikasi publik | Review → approval → (opsional) generate dokumen dari template |
+| Relasi | **Menerima data** dari submission Form Builder | **Menyediakan data** untuk template |
 
-### Kamus Label Awal
-```
-nama, nama lengkap, nama pemohon  → submission.nama
-nip                                → submission.nip
-jabatan                            → submission.jabatan
-opd, instansi, unit kerja          → submission.opd
-tanggal, tgl, tanggal pengajuan    → system.tanggal
-nomor surat, no. surat             → document.nomor_surat
-```
+Ditutup dengan diagram: *Form Builder (input) → Submission → Template Document Center (output)*.
 
-## Batasan
-- Hanya `.docx` (bukan `.doc` lama). Untuk `.doc`, user save-as `.docx` dulu.
-- Deteksi otomatis bekerja untuk pola `Label : Value` di paragraf/tabel. Format lebih rumit bisa ditambahkan mapping manual di iterasi berikutnya.
+### Bagian 3 — Identifikasi Keunikan Berkas yang Diunggah
+Audit fitur yang sudah ada di sistem, dengan status jelas:
 
-## Tidak Berubah
-- Katalog placeholder (`PLACEHOLDER_CATALOG`) dan engine (`mergeTemplate`) tetap dipakai untuk template berbasis HTML lama.
-- RBAC & auth (`requireSupabaseAuth`) — server fn baru pakai middleware yang sudah ada.
+- **Sudah ada**:
+  - Hash SHA-256 pada dokumen final (di `hash.service.ts`).
+  - QR verifikasi publik pada dokumen bertanda tangan (`qr.service.ts`, route `/verify/:token`, `/v/:token`).
+  - Audit trail per dokumen (`document-audit.service.ts`).
+- **Belum ada / rekomendasi**:
+  - Hash + QR untuk **berkas lampiran unggahan** (misal scan ijazah yang diupload PNS di Form Builder) — saat ini file upload belum diberi identitas unik yang dapat diverifikasi publik.
+  - Rekomendasi implementasi: hash SHA-256 saat upload → simpan di kolom `file_hash` → generate QR watermark opsional untuk berkas yang di-*preview* / diunduh ulang, plus halaman verifikasi `/verify-upload/:hash`.
 
-Setelah plan disetujui, saya lanjut implementasi mulai dari migrasi + bucket, lalu server fn, terakhir UI.
+## Cara Pembuatan
+- Script Python (`reportlab`) untuk generate PDF dengan tabel & diagram sederhana (kotak + panah ASCII/shape).
+- Palet warna mengikuti kesan Document Center (biru gelap + aksen).
+- QA: render ke JPG per halaman, cek overlap/overflow, perbaiki, baru serahkan.
+
+## Deliverable
+- `/mnt/documents/Peta-Integrasi-Template-DocumentCenter.pdf` (final)
+- Ditampilkan lewat `<presentation-artifact>` agar bisa langsung diunduh.
+
+Tidak ada perubahan kode aplikasi pada langkah ini.
