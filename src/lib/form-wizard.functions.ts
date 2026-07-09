@@ -117,6 +117,15 @@ export const fwCommitNewForm = createServerFn({ method: "POST" })
             .nullable(),
         }),
         fields: fieldsArrayInput,
+        targets: z
+          .array(
+            z.object({
+              target_type: z.enum(["opd", "asn_type", "role", "position", "unit_kerja", "individu"]),
+              target_value: z.string().min(1).max(80),
+            }),
+          )
+          .max(200)
+          .default([]),
         publish: z.boolean().default(false),
       })
       .parse(input),
