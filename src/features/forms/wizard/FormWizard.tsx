@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
-import { FormDesigner } from "@/features/forms/designer/FormDesigner";
+import { FormFieldsTab } from "@/features/forms/builder/FormFieldsTab";
 import { PreviewPanel } from "@/features/forms/designer/PreviewPanel";
 import { fwCommitNewForm, fwLogFieldEvent } from "@/lib/form-wizard.functions";
 import {
@@ -500,14 +500,57 @@ function DesignStep({
   setPayload: (u: (p: WizardPayload) => WizardPayload) => void;
   emitAudit: (e: string, m?: Record<string, unknown>) => void;
 }) {
+  const [showPreview, setShowPreview] = useState(false);
+  const fields = payload.design.fields;
+  const setFields = (next: typeof fields) => {
+    if (next.length !== fields.length) {
+      emitAudit(next.length > fields.length ? "field.add" : "field.remove", {
+        from: fields.length,
+        to: next.length,
+      });
+    } else {
+      emitAudit("field.update", { count: next.length });
+    }
+    setPayload((p) => ({ ...p, design: { fields: next } }));
+  };
   return (
-    <FormDesigner
-      fields={payload.design.fields}
-      onChange={(fields) => setPayload((p) => ({ ...p, design: { fields } }))}
-      emitAudit={emitAudit}
-    />
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Tambah, atur ulang (drag ikon ⋮⋮), duplikasi, atau hapus field. Klik “Pratinjau”
+          untuk melihat tampilan seperti yang akan dilihat pengisi.
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowPreview((v) => !v)}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-muted"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          {showPreview ? "Tutup pratinjau" : "Pratinjau form"}
+        </button>
+      </div>
+
+      {showPreview ? (
+        <div className="rounded-lg border border-border bg-muted/30 p-3">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Pratinjau — seperti yang dilihat pengisi
+          </div>
+          <PreviewPanel fields={fields} />
+        </div>
+      ) : null}
+
+      <FormFieldsTab
+        fields={fields}
+        setFields={setFields}
+        readOnly={false}
+        busy={false}
+        onSave={() => {}}
+        hideSave
+      />
+    </div>
   );
 }
+
 
 function ValidationOverviewStep({ payload }: { payload: WizardPayload }) {
   const fields = payload.design.fields;
