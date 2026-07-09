@@ -16,7 +16,7 @@ import {
 import { writeFormAudit, type FormAuditAction } from "@/features/forms/services/form-audit.service";
 import { formFieldSchema } from "@/features/forms/schema/types";
 
-const EMPLOYMENT_TYPES = ["PNS", "PPPK", "PPPK_PW", "NON_ASN"] as const;
+const EMPLOYMENT_TYPES = ["PNS", "PPPK", "PPPK_PW", "NON_ASN", "THL"] as const;
 
 // ---------- Drafts ----------
 export const fwListDrafts = createServerFn({ method: "GET" })
@@ -102,7 +102,7 @@ export const fwCommitNewForm = createServerFn({ method: "POST" })
           sla_days: z.number().int().min(0).max(365).optional().nullable(),
         }),
         employment: z.object({
-          types: z.array(z.enum(EMPLOYMENT_TYPES)).max(4).default([]),
+          types: z.array(z.enum(EMPLOYMENT_TYPES)).max(5).default([]),
         }),
         permissions: z.object({
           opd_pemilik_id: z.string().uuid().optional().nullable(),
