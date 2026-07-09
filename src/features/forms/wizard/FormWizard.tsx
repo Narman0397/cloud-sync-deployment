@@ -152,6 +152,7 @@ export function FormWizard(props: Props) {
             sla_days: state.payload.general.sla_days ?? null,
           },
           employment: { types: state.payload.employment.types },
+          targets: state.payload.targets,
           permissions: {
             opd_pemilik_id: state.payload.permissions.opd_pemilik_id,
             allow_multiple_submit: state.payload.permissions.allow_multiple_submit,
@@ -350,8 +351,10 @@ function SaveStatus({
 function validatePayload(p: WizardPayload): string[] {
   const errs: string[] = [];
   if (!p.general.name || p.general.name.trim().length < 3) errs.push("Nama form min 3 karakter");
-  if (p.employment.types.length === 0) errs.push("Pilih minimal 1 tipe pegawai");
   if (p.design.fields.length === 0) errs.push("Tambah minimal 1 field");
+  // Target opsional — kosong = default semua user di OPD pemilik.
+  const badTarget = p.targets.find((t) => !t.target_value);
+  if (badTarget) errs.push(`Lengkapi nilai target "${badTarget.target_type}"`);
   return errs;
 }
 
