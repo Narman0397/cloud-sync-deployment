@@ -14,7 +14,8 @@ import {
   persistFormFields,
 } from "@/features/forms/services/form-wizard.service";
 import { writeFormAudit, type FormAuditAction } from "@/features/forms/services/form-audit.service";
-import { formFieldSchema } from "@/features/forms/schema/types";
+import { formFieldSchema, type FormSchemaSnapshot, type FormField } from "@/features/forms/schema/types";
+import { generateAssignmentsForForm } from "./assignments.functions";
 
 const EMPLOYMENT_TYPES = ["PNS", "PPPK", "PPPK_PW", "NON_ASN", "THL"] as const;
 
@@ -156,6 +157,33 @@ export const fwCommitNewForm = createServerFn({ method: "POST" })
       createVersion: data.publish,
     });
 
+    let assignmentsCreated = 0;
+    if (data.publish) {
+      // Build schema snapshot (required so ASN dapat merender form saat mengerjakan tugas).
+      const snapshot: FormSchemaSnapshot = {
+        version: 1,
+        fields: (data.fields as FormField[]).map((f, i) => ({
+          kode: f.kode,
+          label: f.label,
+          tipe: f.tipe,
+          required: !!f.required,
+          placeholder: f.placeholder ?? null,
+          help_text: f.help_text ?? null,
+          options: (f.options ?? []) as FormField["options"],
+          validation: (f.validation ?? {}) as FormField["validation"],
+          visible_if: (f.visible_if ?? null) as FormField["visible_if"],
+          urutan: typeof f.urutan === "number" ? f.urutan : i,
+        })),
+        publishedAt: new Date().toISOString(),
+      };
+      await supabaseAdmin
+        .from("forms")
+        .update({ schema_snapshot: snapshot as never })
+        .eq("id", formId);
+      // Generate assignments untuk target user (form_targets atau fallback ke OPD pemilik).
+      assignmentsCreated = await generateAssignmentsForForm(formId);
+    }
+
     if (data.draftId) {
       await deleteWizardDraft(supabaseAdmin, data.draftId, userId).catch(() => {});
     }
@@ -169,9 +197,10 @@ export const fwCommitNewForm = createServerFn({ method: "POST" })
         via: "wizard",
         field_count: persisted.field_count,
         version: persisted.version?.number ?? null,
+        assignments_created: assignmentsCreated,
       },
     });
-    return { id: formId, version: persisted.version ?? null };
+    return { id: formId, version: persisted.version ?? null, assignments: assignmentsCreated };
   });
 
 // ---------- Save fields (edit existing) ----------
