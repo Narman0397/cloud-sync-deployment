@@ -16,7 +16,7 @@ import {
 import { writeFormAudit, type FormAuditAction } from "@/features/forms/services/form-audit.service";
 import { formFieldSchema } from "@/features/forms/schema/types";
 
-const EMPLOYMENT_TYPES = ["PNS", "PPPK", "PPPK_PW", "NON_ASN"] as const;
+const EMPLOYMENT_TYPES = ["PNS", "PPPK", "PPPK_PW", "NON_ASN", "THL"] as const;
 
 // ---------- Drafts ----------
 export const fwListDrafts = createServerFn({ method: "GET" })
