@@ -773,8 +773,8 @@ function ReviewStep({
           <Item label="Kategori" value={payload.general.category || "—"} />
           <Item label="SLA (hari)" value={payload.general.sla_days?.toString() ?? "—"} />
           <Item
-            label="Tipe Pegawai"
-            value={payload.employment.types.length ? payload.employment.types.join(", ") : "—"}
+            label="Target Pengisi"
+            value={payload.targets.length ? `${payload.targets.length} target` : "Default (OPD pemilik)"}
           />
           <Item label="Jumlah Field" value={String(payload.design.fields.length)} />
           <Item
