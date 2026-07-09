@@ -211,13 +211,15 @@ export function FormFieldsTab({
           >
             <Plus className="h-4 w-4" /> Tambah Field
           </button>
-          <button
-            onClick={onSave}
-            disabled={busy}
-            className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
-          >
-            <Save className="h-4 w-4" /> Simpan Semua Field
-          </button>
+          {!hideSave && (
+            <button
+              onClick={onSave}
+              disabled={busy}
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
+            >
+              <Save className="h-4 w-4" /> Simpan Semua Field
+            </button>
+          )}
         </div>
       )}
     </div>
