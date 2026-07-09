@@ -6,6 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 import { FormFieldsTab } from "@/features/forms/builder/FormFieldsTab";
+import { FormTargetsTab } from "@/features/forms/builder/FormTargetsTab";
 import { PreviewPanel } from "@/features/forms/designer/PreviewPanel";
 import { fwCommitNewForm, fwLogFieldEvent } from "@/lib/form-wizard.functions";
 import {
@@ -49,7 +50,7 @@ const FRIENDLY_STEP_TITLE: Record<WizardStep, string> = {
 
 const FRIENDLY_STEP_HINT: Record<WizardStep, string> = {
   general: "Nama, kategori, batas waktu",
-  employment: "Tipe pegawai yang dituju",
+  employment: "Target pengisi (role/OPD/individu)",
   design: "Tambah & atur field input",
   validation: "Ringkasan aturan per field",
   permissions: "OPD pemilik & izin submit",
@@ -59,7 +60,7 @@ const FRIENDLY_STEP_HINT: Record<WizardStep, string> = {
 
 const FRIENDLY_STEP_LEAD: Record<WizardStep, string> = {
   general: "Beri nama yang mudah dikenali ASN. Kategori dan batas waktu (SLA) opsional.",
-  employment: "Tentukan tipe pegawai mana saja yang berhak melihat & mengisi form ini.",
+  employment: "Tentukan siapa yang harus mengisi form ini (per role, OPD, jenis ASN, jabatan, atau individu). Jika dikosongkan, default = semua user di OPD pemilik form.",
   design: "Tambah field input, atur urutan, dan setel properti tiap field.",
   validation: "Ringkasan aturan validasi semua field. Edit detail di step Susun field.",
   permissions: "Tentukan OPD pemilik dan apakah ASN boleh submit berulang.",
