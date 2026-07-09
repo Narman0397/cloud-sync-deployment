@@ -14,7 +14,8 @@ import {
   persistFormFields,
 } from "@/features/forms/services/form-wizard.service";
 import { writeFormAudit, type FormAuditAction } from "@/features/forms/services/form-audit.service";
-import { formFieldSchema } from "@/features/forms/schema/types";
+import { formFieldSchema, type FormSchemaSnapshot, type FormField } from "@/features/forms/schema/types";
+import { generateAssignmentsForForm } from "./assignments.functions";
 
 const EMPLOYMENT_TYPES = ["PNS", "PPPK", "PPPK_PW", "NON_ASN", "THL"] as const;
 
