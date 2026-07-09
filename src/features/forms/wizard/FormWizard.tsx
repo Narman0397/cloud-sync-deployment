@@ -461,36 +461,23 @@ function EmploymentStep({
   payload: WizardPayload;
   setPayload: (u: (p: WizardPayload) => WizardPayload) => void;
 }) {
-  const selected = new Set(payload.employment.types);
-  function toggle(t: EmploymentType) {
-    const next = new Set(selected);
-    if (next.has(t)) next.delete(t);
-    else next.add(t);
-    setPayload((p) => ({ ...p, employment: { types: Array.from(next) } }));
-  }
   return (
-    <div>
-      <p className="mb-3 text-sm text-muted-foreground">
-        Pilih siapa yang berhak mengisi form ini berdasarkan tipe pegawai.
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Tentukan siapa yang harus mengisi form ini. Bisa berdasarkan <strong>Role</strong>,{" "}
+        <strong>OPD</strong>, <strong>Jenis ASN</strong>, <strong>Jabatan Sistem</strong>, atau
+        pilih <strong>Individu</strong> tertentu. Kosongkan untuk memakai default (semua user di
+        OPD pemilik form).
       </p>
-      <div className="flex flex-wrap gap-2">
-        {EMPLOYMENT.map((t) => {
-          const on = selected.has(t);
-          return (
-            <button
-              key={t}
-              onClick={() => toggle(t)}
-              className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
-                on
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {EMPLOYMENT_LABEL[t]}
-            </button>
-          );
-        })}
-      </div>
+      <FormTargetsTab
+        formId=""
+        formStatus="draft"
+        targets={payload.targets}
+        setTargets={(t) => setPayload((p) => ({ ...p, targets: t }))}
+        busy={false}
+        onSave={() => {}}
+        hideActions
+      />
     </div>
   );
 }
