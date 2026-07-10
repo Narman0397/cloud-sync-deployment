@@ -2946,6 +2946,7 @@ export type Database = {
           created_at: string
           golongan_min: string | null
           id: string
+          is_system: boolean
           kategori: string | null
           kode: string | null
           nama: string
@@ -2959,6 +2960,7 @@ export type Database = {
           created_at?: string
           golongan_min?: string | null
           id?: string
+          is_system?: boolean
           kategori?: string | null
           kode?: string | null
           nama: string
@@ -2972,6 +2974,7 @@ export type Database = {
           created_at?: string
           golongan_min?: string | null
           id?: string
+          is_system?: boolean
           kategori?: string | null
           kode?: string | null
           nama?: string

@@ -1,4 +1,6 @@
 // CRUD master jabatan untuk super_admin / admin_pemda.
+// Jabatan sistem (is_system=true) tidak bisa dihapus dan kode/klasifikasinya
+// tidak bisa diubah — dilindungi oleh trigger DB (protect_system_jabatan).
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -40,7 +42,21 @@ export const listMasterJabatan = createServerFn({ method: "POST" })
     const supabaseAdmin = await getAdmin();
     const { data, error } = await supabaseAdmin
       .from("master_jabatan")
-      .select("id,kode,nama,kategori,system_position,urutan,aktif,created_at,updated_at")
+      .select("id,kode,nama,kategori,system_position,urutan,aktif,is_system,created_at,updated_at")
+      .order("urutan");
+    if (error) throw new Error(error.message);
+    return { rows: data ?? [] };
+  });
+
+/** Daftar jabatan sistem (default bawaan aplikasi) — tidak boleh dihapus. */
+export const listSystemJabatan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const supabaseAdmin = await getAdmin();
+    const { data, error } = await supabaseAdmin
+      .from("master_jabatan")
+      .select("id,kode,nama,kategori,system_position,urutan,aktif,is_system")
+      .eq("is_system", true)
       .order("urutan");
     if (error) throw new Error(error.message);
     return { rows: data ?? [] };
@@ -62,6 +78,33 @@ export const upsertMasterJabatan = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const supabaseAdmin = await getAdmin();
+    if (data.id) {
+      // Untuk jabatan sistem, hanya izinkan ubah nama, kategori, urutan, aktif.
+      const { data: existing } = await supabaseAdmin
+        .from("master_jabatan")
+        .select("is_system,kode,system_position")
+        .eq("id", data.id)
+        .maybeSingle();
+      const isSystem = Boolean(existing?.is_system);
+      const patch: Record<string, unknown> = isSystem
+        ? {
+            nama: data.nama,
+            kategori: data.kategori ?? null,
+            urutan: data.urutan,
+            aktif: data.aktif,
+          }
+        : {
+            kode: data.kode,
+            nama: data.nama,
+            kategori: data.kategori ?? null,
+            system_position: data.system_position ?? null,
+            urutan: data.urutan,
+            aktif: data.aktif,
+          };
+      const { error } = await supabaseAdmin.from("master_jabatan").update(patch).eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { ok: true, id: data.id };
+    }
     const payload = {
       kode: data.kode,
       nama: data.nama,
@@ -69,12 +112,8 @@ export const upsertMasterJabatan = createServerFn({ method: "POST" })
       system_position: data.system_position ?? null,
       urutan: data.urutan,
       aktif: data.aktif,
+      is_system: false,
     };
-    if (data.id) {
-      const { error } = await supabaseAdmin.from("master_jabatan").update(payload).eq("id", data.id);
-      if (error) throw new Error(error.message);
-      return { ok: true, id: data.id };
-    }
     const { data: row, error } = await supabaseAdmin
       .from("master_jabatan")
       .insert(payload)
@@ -90,6 +129,12 @@ export const deleteMasterJabatan = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context.userId);
     const supabaseAdmin = await getAdmin();
+    const { data: existing } = await supabaseAdmin
+      .from("master_jabatan")
+      .select("is_system")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (existing?.is_system) throw new Error("Jabatan sistem tidak dapat dihapus");
     const { error } = await supabaseAdmin.from("master_jabatan").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

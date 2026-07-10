@@ -19,6 +19,7 @@ import {
   Server,
   MapPin,
   Palette,
+  Briefcase,
   ClipboardCheck,
   Database,
   ChevronDown,
@@ -103,6 +104,12 @@ const utama: Item[] = [
     label: "Master Lokasi",
     desc: "Gedung, lantai, dan ruangan aset.",
     icon: MapPin,
+  },
+  {
+    to: "/admin/system/jabatan-sistem",
+    label: "Jabatan Sistem",
+    desc: "Jabatan bawaan aplikasi yang selalu sinkron dengan master jabatan.",
+    icon: Briefcase,
   },
   {
     to: "/admin/system/feature-flags",
