@@ -31,6 +31,7 @@ type Row = {
   system_position: SystemPosition | null;
   urutan: number;
   aktif: boolean;
+  is_system?: boolean;
 };
 
 function Page() {
