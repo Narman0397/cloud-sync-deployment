@@ -9,84 +9,10 @@ import { log, newCorrelationId } from "./logger";
 import { checkRateLimit } from "@/integrations/supabase/rate-limit.server";
 import { casUpdate, CasConflictError } from "./db/cas";
 import { withIdempotency, idemKey } from "./http/idempotency";
-
-type TargetRow = { target_type: string; target_value: string };
-
-/**
- * Memutuskan kumpulan user_id yang harus dapat assignment untuk form
- * berdasarkan baris form_targets. Server-side resolution.
- */
-async function resolveTargetUserIds(
-  formId: string,
-  formOpdId: string | null,
-): Promise<Array<{ user_id: string; opd_id: string | null }>> {
-  const { data: targets } = await supabaseAdmin
-    .from("form_targets")
-    .select("target_type,target_value")
-    .eq("form_id", formId);
-  const t = (targets ?? []) as TargetRow[];
-  // Set untuk dedupe
-  const out = new Map<string, { user_id: string; opd_id: string | null }>();
-
-  // 1. user spesifik (target_type = 'individu')
-  const userIds = t.filter((x) => x.target_type === "individu").map((x) => x.target_value);
-  if (userIds.length) {
-    const { data } = await supabaseAdmin.from("profiles").select("id,opd_id").in("id", userIds);
-    for (const p of data ?? []) out.set(p.id, { user_id: p.id, opd_id: p.opd_id });
-  }
-
-  // 2. role-based
-  const roles = t.filter((x) => x.target_type === "role").map((x) => x.target_value);
-  if (roles.length) {
-    const { data: roleUsers } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .in("role", roles as never[]);
-    const ids = [...new Set((roleUsers ?? []).map((r) => r.user_id))];
-    if (ids.length) {
-      const { data } = await supabaseAdmin.from("profiles").select("id,opd_id").in("id", ids);
-      for (const p of data ?? []) out.set(p.id, { user_id: p.id, opd_id: p.opd_id });
-    }
-  }
-
-  // 3. opd-based
-  const opds = t.filter((x) => x.target_type === "opd").map((x) => x.target_value);
-  if (opds.length) {
-    const { data } = await supabaseAdmin.from("profiles").select("id,opd_id").in("opd_id", opds);
-    for (const p of data ?? []) out.set(p.id, { user_id: p.id, opd_id: p.opd_id });
-  }
-
-  // 4. asn_type
-  const asnTypes = t.filter((x) => x.target_type === "asn_type").map((x) => x.target_value);
-  if (asnTypes.length) {
-    const { data } = await supabaseAdmin
-      .from("profiles")
-      .select("id,opd_id")
-      .in("asn_type", asnTypes as never[]);
-    for (const p of data ?? []) out.set(p.id, { user_id: p.id, opd_id: p.opd_id });
-  }
-
-  // 5. system_position (DB enum value = 'position')
-  const sysPos = t.filter((x) => x.target_type === "position").map((x) => x.target_value);
-  if (sysPos.length) {
-    const { data } = await supabaseAdmin
-      .from("profiles")
-      .select("id,opd_id")
-      .in("system_position", sysPos as never[]);
-    for (const p of data ?? []) out.set(p.id, { user_id: p.id, opd_id: p.opd_id });
-  }
-
-  // 6. fallback: jika tidak ada target, default ke OPD pemilik form
-  if (out.size === 0 && formOpdId) {
-    const { data } = await supabaseAdmin
-      .from("profiles")
-      .select("id,opd_id")
-      .eq("opd_id", formOpdId);
-    for (const p of data ?? []) out.set(p.id, { user_id: p.id, opd_id: p.opd_id });
-  }
-
-  return [...out.values()];
-}
+import {
+  ensureAssignmentsForUser,
+  resolveTargetUserIds,
+} from "@/features/forms/services/assignment-resolution.service";
 
 /** Dipanggil dari publishForm. */
 export async function generateAssignmentsForForm(formId: string): Promise<number> {
@@ -96,7 +22,7 @@ export async function generateAssignmentsForForm(formId: string): Promise<number
     .eq("id", formId)
     .single();
   if (!form) return 0;
-  const users = await resolveTargetUserIds(formId, form.opd_pemilik_id);
+  const users = await resolveTargetUserIds(supabaseAdmin, formId, form.opd_pemilik_id);
   if (users.length === 0) return 0;
   // Upsert assignment (skip yang sudah ada).
   const { data: existing } = await supabaseAdmin
@@ -173,6 +99,7 @@ export const listMyAssignments = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { userId } = context as { userId: string };
+    await ensureAssignmentsForUser(supabaseAdmin, userId);
     let q = supabaseAdmin
       .from("form_assignments")
       .select(
