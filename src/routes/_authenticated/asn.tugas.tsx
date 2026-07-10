@@ -49,6 +49,7 @@ function Page() {
   const [rows, setRows] = useState<Row[]>([]);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
 
   const statusFilter = search.status as StatusFilter;
@@ -59,6 +60,7 @@ function Page() {
     if (!user) return;
     let cancelled = false;
     setBusy(true);
+    setLoadError(null);
     (async () => {
       try {
         const payload: { page: number; pageSize: number; status?: (typeof STATUSES)[number] } = {
@@ -73,6 +75,12 @@ function Page() {
         if (cancelled) return;
         setRows(r.rows);
         setTotal(r.total);
+      } catch (e) {
+        if (!cancelled) {
+          setRows([]);
+          setTotal(0);
+          setLoadError(e instanceof Error ? e.message : "Gagal memuat tugas.");
+        }
       } finally {
         if (!cancelled) setBusy(false);
       }
@@ -153,6 +161,10 @@ function Page() {
           <div className="p-3">
             {busy ? (
               <div className="py-10 text-center text-muted-foreground">Memuat…</div>
+            ) : loadError ? (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-8 text-center text-sm text-destructive">
+                {loadError}
+              </div>
             ) : rows.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border p-8 text-center text-muted-foreground">
                 Belum ada tugas.
