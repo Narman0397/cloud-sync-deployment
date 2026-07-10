@@ -106,6 +106,12 @@ const utama: Item[] = [
     icon: MapPin,
   },
   {
+    to: "/admin/system/jabatan-sistem",
+    label: "Jabatan Sistem",
+    desc: "Jabatan bawaan aplikasi yang selalu sinkron dengan master jabatan.",
+    icon: Briefcase,
+  },
+  {
     to: "/admin/system/feature-flags",
     label: "Fitur (Feature Flags)",
     desc: "Aktif/nonaktifkan fitur tanpa redeploy.",
