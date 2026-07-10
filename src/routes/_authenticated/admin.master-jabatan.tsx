@@ -166,11 +166,18 @@ function Page() {
               {editing.id ? "Ubah" : "Tambah"} Jabatan
             </h2>
             <div className="grid gap-3 text-sm">
+              {editing.is_system && (
+                <div className="rounded-md border border-primary/30 bg-primary-soft/50 px-3 py-2 text-xs text-primary">
+                  Jabatan sistem — kode & klasifikasi ASN dikunci agar tetap sinkron dengan
+                  sistem. Anda tetap dapat mengubah nama, kategori, urutan, dan status aktif.
+                </div>
+              )}
               <label className="grid gap-1">
                 <span>Kode (huruf besar / angka / _)</span>
                 <input
-                  className="h-9 rounded-md border border-border bg-surface px-3"
+                  className="h-9 rounded-md border border-border bg-surface px-3 disabled:opacity-60"
                   value={editing.kode ?? ""}
+                  disabled={Boolean(editing.is_system)}
                   onChange={(e) => setEditing({ ...editing, kode: e.target.value.toUpperCase() })}
                 />
               </label>
@@ -193,8 +200,9 @@ function Page() {
               <label className="grid gap-1">
                 <span>Klasifikasi ASN otomatis</span>
                 <select
-                  className="h-9 rounded-md border border-border bg-surface px-3"
+                  className="h-9 rounded-md border border-border bg-surface px-3 disabled:opacity-60"
                   value={editing.system_position ?? ""}
+                  disabled={Boolean(editing.is_system)}
                   onChange={(e) =>
                     setEditing({
                       ...editing,
