@@ -29,7 +29,9 @@ function matchesTarget(
   if (target.target_type === "individu") return value === userId;
   if (target.target_type === "role") return roles.has(value);
   if (target.target_type === "opd") return !!profile.opd_id && value === profile.opd_id;
-  if (target.target_type === "asn_type") return !!profile.asn_type && value === profile.asn_type;
+  if (target.target_type === "asn_type") {
+    return roles.has("asn") && !!profile.asn_type && value === profile.asn_type;
+  }
   if (target.target_type === "position") {
     return !!profile.system_position && value === profile.system_position;
   }

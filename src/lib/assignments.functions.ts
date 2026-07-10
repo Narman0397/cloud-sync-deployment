@@ -128,7 +128,6 @@ export const listMyAssignments = createServerFn({ method: "POST" })
       }
     }
 
-    return { rows: rows ?? [], total: count ?? 0 };
     return {
       rows: rows.map((row) => ({
         ...row,
