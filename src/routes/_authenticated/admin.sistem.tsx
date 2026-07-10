@@ -19,6 +19,7 @@ import {
   Server,
   MapPin,
   Palette,
+  Briefcase,
   ClipboardCheck,
   Database,
   ChevronDown,

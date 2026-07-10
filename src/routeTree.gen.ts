@@ -123,6 +123,7 @@ import { Route as AuthenticatedAdminSystemStorageProviderRouteImport } from './r
 import { Route as AuthenticatedAdminSystemSettingsRouteImport } from './routes/_authenticated/admin.system.settings'
 import { Route as AuthenticatedAdminSystemRetentionRouteImport } from './routes/_authenticated/admin.system.retention'
 import { Route as AuthenticatedAdminSystemLoadReadinessRouteImport } from './routes/_authenticated/admin.system.load-readiness'
+import { Route as AuthenticatedAdminSystemJabatanSistemRouteImport } from './routes/_authenticated/admin.system.jabatan-sistem'
 import { Route as AuthenticatedAdminSystemGoLiveRouteImport } from './routes/_authenticated/admin.system.go-live'
 import { Route as AuthenticatedAdminSystemFeatureFlagsRouteImport } from './routes/_authenticated/admin.system.feature-flags'
 import { Route as AuthenticatedAdminSystemDisasterRecoveryRouteImport } from './routes/_authenticated/admin.system.disaster-recovery'
@@ -817,6 +818,12 @@ const AuthenticatedAdminSystemLoadReadinessRoute =
     path: '/admin/system/load-readiness',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminSystemJabatanSistemRoute =
+  AuthenticatedAdminSystemJabatanSistemRouteImport.update({
+    id: '/admin/system/jabatan-sistem',
+    path: '/admin/system/jabatan-sistem',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminSystemGoLiveRoute =
   AuthenticatedAdminSystemGoLiveRouteImport.update({
     id: '/admin/system/go-live',
@@ -1313,6 +1320,7 @@ export interface FileRoutesByFullPath {
   '/admin/system/disaster-recovery': typeof AuthenticatedAdminSystemDisasterRecoveryRoute
   '/admin/system/feature-flags': typeof AuthenticatedAdminSystemFeatureFlagsRoute
   '/admin/system/go-live': typeof AuthenticatedAdminSystemGoLiveRoute
+  '/admin/system/jabatan-sistem': typeof AuthenticatedAdminSystemJabatanSistemRoute
   '/admin/system/load-readiness': typeof AuthenticatedAdminSystemLoadReadinessRoute
   '/admin/system/retention': typeof AuthenticatedAdminSystemRetentionRoute
   '/admin/system/settings': typeof AuthenticatedAdminSystemSettingsRoute
@@ -1484,6 +1492,7 @@ export interface FileRoutesByTo {
   '/admin/system/disaster-recovery': typeof AuthenticatedAdminSystemDisasterRecoveryRoute
   '/admin/system/feature-flags': typeof AuthenticatedAdminSystemFeatureFlagsRoute
   '/admin/system/go-live': typeof AuthenticatedAdminSystemGoLiveRoute
+  '/admin/system/jabatan-sistem': typeof AuthenticatedAdminSystemJabatanSistemRoute
   '/admin/system/load-readiness': typeof AuthenticatedAdminSystemLoadReadinessRoute
   '/admin/system/retention': typeof AuthenticatedAdminSystemRetentionRoute
   '/admin/system/settings': typeof AuthenticatedAdminSystemSettingsRoute
@@ -1662,6 +1671,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/system/disaster-recovery': typeof AuthenticatedAdminSystemDisasterRecoveryRoute
   '/_authenticated/admin/system/feature-flags': typeof AuthenticatedAdminSystemFeatureFlagsRoute
   '/_authenticated/admin/system/go-live': typeof AuthenticatedAdminSystemGoLiveRoute
+  '/_authenticated/admin/system/jabatan-sistem': typeof AuthenticatedAdminSystemJabatanSistemRoute
   '/_authenticated/admin/system/load-readiness': typeof AuthenticatedAdminSystemLoadReadinessRoute
   '/_authenticated/admin/system/retention': typeof AuthenticatedAdminSystemRetentionRoute
   '/_authenticated/admin/system/settings': typeof AuthenticatedAdminSystemSettingsRoute
@@ -1840,6 +1850,7 @@ export interface FileRouteTypes {
     | '/admin/system/disaster-recovery'
     | '/admin/system/feature-flags'
     | '/admin/system/go-live'
+    | '/admin/system/jabatan-sistem'
     | '/admin/system/load-readiness'
     | '/admin/system/retention'
     | '/admin/system/settings'
@@ -2011,6 +2022,7 @@ export interface FileRouteTypes {
     | '/admin/system/disaster-recovery'
     | '/admin/system/feature-flags'
     | '/admin/system/go-live'
+    | '/admin/system/jabatan-sistem'
     | '/admin/system/load-readiness'
     | '/admin/system/retention'
     | '/admin/system/settings'
@@ -2188,6 +2200,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/system/disaster-recovery'
     | '/_authenticated/admin/system/feature-flags'
     | '/_authenticated/admin/system/go-live'
+    | '/_authenticated/admin/system/jabatan-sistem'
     | '/_authenticated/admin/system/load-readiness'
     | '/_authenticated/admin/system/retention'
     | '/_authenticated/admin/system/settings'
@@ -3085,6 +3098,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSystemLoadReadinessRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/system/jabatan-sistem': {
+      id: '/_authenticated/admin/system/jabatan-sistem'
+      path: '/admin/system/jabatan-sistem'
+      fullPath: '/admin/system/jabatan-sistem'
+      preLoaderRoute: typeof AuthenticatedAdminSystemJabatanSistemRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/system/go-live': {
       id: '/_authenticated/admin/system/go-live'
       path: '/admin/system/go-live'
@@ -3864,6 +3884,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminSystemDisasterRecoveryRoute: typeof AuthenticatedAdminSystemDisasterRecoveryRoute
   AuthenticatedAdminSystemFeatureFlagsRoute: typeof AuthenticatedAdminSystemFeatureFlagsRoute
   AuthenticatedAdminSystemGoLiveRoute: typeof AuthenticatedAdminSystemGoLiveRoute
+  AuthenticatedAdminSystemJabatanSistemRoute: typeof AuthenticatedAdminSystemJabatanSistemRoute
   AuthenticatedAdminSystemLoadReadinessRoute: typeof AuthenticatedAdminSystemLoadReadinessRoute
   AuthenticatedAdminSystemRetentionRoute: typeof AuthenticatedAdminSystemRetentionRoute
   AuthenticatedAdminSystemSettingsRoute: typeof AuthenticatedAdminSystemSettingsRoute
@@ -3966,6 +3987,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminSystemFeatureFlagsRoute:
     AuthenticatedAdminSystemFeatureFlagsRoute,
   AuthenticatedAdminSystemGoLiveRoute: AuthenticatedAdminSystemGoLiveRoute,
+  AuthenticatedAdminSystemJabatanSistemRoute:
+    AuthenticatedAdminSystemJabatanSistemRoute,
   AuthenticatedAdminSystemLoadReadinessRoute:
     AuthenticatedAdminSystemLoadReadinessRoute,
   AuthenticatedAdminSystemRetentionRoute:
