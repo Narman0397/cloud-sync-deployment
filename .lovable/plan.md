@@ -1,58 +1,51 @@
+## Temuan utama
 
-# Dokumen PDF: Peta Integrasi Template Document Center
+Masalahnya bukan di tombol publish saja. Data assignment untuk akun ASN sudah dibuat di tabel `form_assignments`, termasuk form yang dibuat oleh superadmin. Namun fungsi daftar `Tugas Saya` gagal saat membaca data karena query memakai nested relation:
 
-Membuat satu file PDF (`/mnt/documents/Peta-Integrasi-Template-DocumentCenter.pdf`) yang menjelaskan tiga hal yang Anda tanyakan. Output bersifat dokumentasi (bukan perubahan kode aplikasi).
+```ts
+form_assignments.select("..., forms(id,judul,deskripsi,status,deadline)")
+```
 
-## Isi PDF (± 6–8 halaman)
+Backend mengembalikan error:
 
-### Bagian 1 — Hubungan Template Publish dengan Modul Lain
-Untuk setiap modul, dijelaskan: *siapa yang memicu (role)* → *template apa yang dipakai* → *dokumen keluaran* → *alur TTE*.
+```text
+Could not find a relationship between 'form_assignments' and 'forms' in the schema cache
+```
 
-- **Pelayanan Publik** (Warga, Petugas Loket, Verifikator OPD, Kepala OPD)
-  - Permohonan layanan → template Surat Keterangan / SK / Rekomendasi → antrian TTD → dokumen final + QR verifikasi publik (`/verify/:token`).
-- **Kinerja OPD** (Admin OPD, Kepala OPD, Eksekutif)
-  - Template Laporan Kinerja / Rekap Bulanan yang menarik data dari dashboard-overview & indikator.
-- **Berbagi Data / Data Terbuka** (Admin Data, Wali Data OPD)
-  - Template Berita Acara Serah Terima Data, MoU Pertukaran Data.
-- **Manajemen ASN** (Admin Kepegawaian, ASN/PNS, Kepala OPD)
-  - Template SK Kenaikan Pangkat, Cuti, Tugas Belajar, Mutasi — placeholder `submission.nama`, `submission.nip`, `submission.jabatan` otomatis dari profil ASN.
-- **Manajemen Aset** (Admin Aset, Bendahara Barang, Kepala OPD)
-  - Template Berita Acara Serah Terima Aset, Penghapusan Aset, Peminjaman.
+Penyebabnya: tabel `form_assignments` tidak punya foreign key ke `forms`, sehingga relasi `forms(...)` tidak bisa dipakai. Di UI error ini tidak ditampilkan dengan jelas, sehingga ASN hanya melihat daftar kosong.
 
-Disertai **matriks role × modul × jenis template** dalam bentuk tabel, dan **diagram alur** template → submission → generator → TTD → arsip.
+## Rencana perbaikan
 
-### Bagian 2 — Perbedaan Template (Document Center) vs Form Builder
-Tabel perbandingan singkat:
+1. **Perbaiki struktur relasi database**
+   - Tambahkan foreign key:
+     - `form_assignments.form_id -> forms.id`
+     - `form_targets.form_id -> forms.id`
+   - Tambahkan foreign key user/profil yang aman bila belum ada:
+     - `form_assignments.user_id -> profiles.id`
+   - Pastikan data existing aman dulu; hasil pengecekan menunjukkan tidak ada assignment/target yatim.
 
-| Aspek | Template Document Center | Form Builder |
-|---|---|---|
-| Tujuan | Menghasilkan **dokumen resmi** (surat/SK/berita acara) | Mengumpulkan **data/input** dari pemohon |
-| Output | File PDF/DOCX ber-TTE + QR | Baris data submission untuk diproses workflow |
-| Isi | HTML/Word + placeholder `{{...}}` | Field (text, select, upload, dsb.) + validasi |
-| Pemakai akhir | Pejabat penandatangan & penerima dokumen | Warga / ASN yang mengajukan |
-| Alur setelahnya | Antrian TTD → arsip → verifikasi publik | Review → approval → (opsional) generate dokumen dari template |
-| Relasi | **Menerima data** dari submission Form Builder | **Menyediakan data** untuk template |
+2. **Buat fungsi daftar tugas lebih tahan error**
+   - Ubah `listMyAssignments` agar tidak bergantung penuh pada nested relation `forms(...)`.
+   - Ambil `form_assignments` dulu, lalu ambil data `forms` berdasarkan `form_id`, kemudian gabungkan di server function.
+   - Dengan ini, meskipun schema cache relasi belum refresh, daftar tugas tetap muncul.
 
-Ditutup dengan diagram: *Form Builder (input) → Submission → Template Document Center (output)*.
+3. **Tampilkan error dengan jelas di halaman ASN**
+   - Tambahkan state error di `src/routes/_authenticated/asn.tugas.tsx`.
+   - Jika `listMyAssignments` gagal, tampilkan pesan error singkat dan jangan diam-diam menampilkan “Belum ada tugas”.
 
-### Bagian 3 — Identifikasi Keunikan Berkas yang Diunggah
-Audit fitur yang sudah ada di sistem, dengan status jelas:
+4. **Rapikan target resolver supaya tidak salah sasaran**
+   - Pastikan target `role: asn` hanya mengambil user dengan role ASN.
+   - Pastikan target `asn_type` tidak mengikutkan user non-ASN yang kebetulan punya `asn_type` terisi.
+   - Ini mencegah kasus form terkirim ke akun admin desa/non-ASN.
 
-- **Sudah ada**:
-  - Hash SHA-256 pada dokumen final (di `hash.service.ts`).
-  - QR verifikasi publik pada dokumen bertanda tangan (`qr.service.ts`, route `/verify/:token`, `/v/:token`).
-  - Audit trail per dokumen (`document-audit.service.ts`).
-- **Belum ada / rekomendasi**:
-  - Hash + QR untuk **berkas lampiran unggahan** (misal scan ijazah yang diupload PNS di Form Builder) — saat ini file upload belum diberi identitas unik yang dapat diverifikasi publik.
-  - Rekomendasi implementasi: hash SHA-256 saat upload → simpan di kolom `file_hash` → generate QR watermark opsional untuk berkas yang di-*preview* / diunduh ulang, plus halaman verifikasi `/verify-upload/:hash`.
+5. **Backfill dan validasi ulang**
+   - Jalankan backfill assignment untuk semua form `published` agar data lama ikut benar.
+   - Verifikasi dengan query backend bahwa tiap ASN target punya assignment.
+   - Verifikasi fungsi `listMyAssignments` tidak lagi error dan mengembalikan rows untuk akun ASN.
 
-## Cara Pembuatan
-- Script Python (`reportlab`) untuk generate PDF dengan tabel & diagram sederhana (kotak + panah ASCII/shape).
-- Palet warna mengikuti kesan Document Center (biru gelap + aksen).
-- QA: render ke JPG per halaman, cek overlap/overflow, perbaiki, baru serahkan.
+## File yang akan disentuh
 
-## Deliverable
-- `/mnt/documents/Peta-Integrasi-Template-DocumentCenter.pdf` (final)
-- Ditampilkan lewat `<presentation-artifact>` agar bisa langsung diunduh.
-
-Tidak ada perubahan kode aplikasi pada langkah ini.
+- `src/lib/assignments.functions.ts`
+- `src/features/forms/services/assignment-resolution.service.ts`
+- `src/routes/_authenticated/asn.tugas.tsx`
+- Migration backend untuk foreign key + backfill assignment

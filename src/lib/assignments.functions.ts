@@ -102,17 +102,39 @@ export const listMyAssignments = createServerFn({ method: "POST" })
     await ensureAssignmentsForUser(supabaseAdmin, userId);
     let q = supabaseAdmin
       .from("form_assignments")
-      .select(
-        "id,form_id,status,due_at,assigned_at,opd_id, forms(id,judul,deskripsi,status,deadline)",
-        { count: "exact" },
-      )
+      .select("id,form_id,status,due_at,assigned_at,opd_id", { count: "exact" })
       .eq("user_id", userId)
       .order("assigned_at", { ascending: false })
       .range(data.page * data.pageSize, data.page * data.pageSize + data.pageSize - 1);
     if (data.status) q = q.eq("status", data.status);
-    const { data: rows, count, error } = await q;
+    const { data: assignmentRows, count, error } = await q;
     if (error) throw new Error(error.message);
-    return { rows: rows ?? [], total: count ?? 0 };
+
+    const rows = assignmentRows ?? [];
+    const formIds = [...new Set(rows.map((row) => row.form_id).filter(Boolean))];
+    const formsById = new Map<
+      string,
+      { id: string; judul: string; deskripsi: string | null; status: string; deadline: string | null }
+    >();
+
+    if (formIds.length > 0) {
+      const { data: forms, error: formsError } = await supabaseAdmin
+        .from("forms")
+        .select("id,judul,deskripsi,status,deadline")
+        .in("id", formIds);
+      if (formsError) throw new Error(formsError.message);
+      for (const form of forms ?? []) {
+        formsById.set(form.id, form);
+      }
+    }
+
+    return {
+      rows: rows.map((row) => ({
+        ...row,
+        forms: formsById.get(row.form_id) ?? null,
+      })),
+      total: count ?? 0,
+    };
   });
 
 export const getAssignment = createServerFn({ method: "POST" })

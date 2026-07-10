@@ -29,7 +29,9 @@ function matchesTarget(
   if (target.target_type === "individu") return value === userId;
   if (target.target_type === "role") return roles.has(value);
   if (target.target_type === "opd") return !!profile.opd_id && value === profile.opd_id;
-  if (target.target_type === "asn_type") return !!profile.asn_type && value === profile.asn_type;
+  if (target.target_type === "asn_type") {
+    return roles.has("asn") && !!profile.asn_type && value === profile.asn_type;
+  }
   if (target.target_type === "position") {
     return !!profile.system_position && value === profile.system_position;
   }
@@ -94,8 +96,16 @@ export async function resolveTargetUserIds(
 
   const asnTypes = rows.filter((x) => x.target_type === "asn_type").map((x) => x.target_value!);
   if (asnTypes.length) {
-    const { data } = await sb.from("profiles").select("id,opd_id").in("asn_type", asnTypes);
-    for (const p of data ?? []) out.set(p.id, { user_id: p.id, opd_id: p.opd_id });
+    const { data: roleUsers } = await sb.from("user_roles").select("user_id").eq("role", "asn");
+    const ids = [...new Set((roleUsers ?? []).map((r: { user_id: string }) => r.user_id))];
+    if (ids.length) {
+      const { data } = await sb
+        .from("profiles")
+        .select("id,opd_id")
+        .in("id", ids)
+        .in("asn_type", asnTypes);
+      for (const p of data ?? []) out.set(p.id, { user_id: p.id, opd_id: p.opd_id });
+    }
   }
 
   const positions = rows.filter((x) => x.target_type === "position").map((x) => x.target_value!);

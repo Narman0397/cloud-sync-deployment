@@ -1767,7 +1767,22 @@ export type Database = {
           user_id?: string | null
           version_number?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "form_assignments_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "form_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       form_audit_logs: {
         Row: {
@@ -2060,7 +2075,15 @@ export type Database = {
           target_type?: string
           target_value?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "form_targets_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "forms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       form_templates: {
         Row: {
