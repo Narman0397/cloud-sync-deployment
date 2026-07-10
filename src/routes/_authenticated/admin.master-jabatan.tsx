@@ -122,7 +122,14 @@ function Page() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-border">
-                  <td className="px-3 py-2 font-mono text-xs">{r.kode}</td>
+                  <td className="px-3 py-2 font-mono text-xs">
+                    {r.kode}
+                    {r.is_system && (
+                      <span className="ml-2 rounded-full bg-primary-soft px-2 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                        Sistem
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 font-medium">{r.nama}</td>
                   <td className="px-3 py-2 text-muted-foreground">{r.kategori ?? "—"}</td>
                   <td className="px-3 py-2 text-muted-foreground">
@@ -136,8 +143,10 @@ function Page() {
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => remove(r.id)}
-                        className="rounded p-1 text-destructive hover:bg-destructive/10"
+                        onClick={() => !r.is_system && remove(r.id)}
+                        disabled={r.is_system}
+                        title={r.is_system ? "Jabatan sistem tidak dapat dihapus" : "Hapus"}
+                        className="rounded p-1 text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
