@@ -55,7 +55,12 @@ type Layanan = {
   evaluasi_kinerja: string | null;
   maklumat_pelayanan: string | null;
   faq: FaqItem[];
+  document_template_id: string | null;
+  tte_required: boolean;
+  tte_signer_role: "kepala_opd" | "kabid" | "staf" | null;
 };
+
+type TplRow = { id: string; name: string };
 
 function LayananPage() {
   const { user, isAdmin, isSuperAdmin } = useAuth();
@@ -65,6 +70,9 @@ function LayananPage() {
   const [myOpdId, setMyOpdId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Layanan> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [templates, setTemplates] = useState<TplRow[]>([]);
+  const fnListTpl = useServerFn(listTemplatesForLayanan);
+  const fnCreateTpl = useServerFn(createTemplateFromLayanan);
 
   async function load() {
     if (!user) return;
