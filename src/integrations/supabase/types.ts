@@ -2741,6 +2741,7 @@ export type Database = {
           created_at: string
           dasar_hukum: string | null
           deskripsi: string | null
+          document_template_id: string | null
           evaluasi_kinerja: string | null
           faq: Json
           id: string
@@ -2759,6 +2760,8 @@ export type Database = {
           sarana_prasarana: string | null
           sla_hari: number
           slug: string
+          tte_required: boolean
+          tte_signer_role: string | null
           updated_at: string
           urutan: number
         }
@@ -2769,6 +2772,7 @@ export type Database = {
           created_at?: string
           dasar_hukum?: string | null
           deskripsi?: string | null
+          document_template_id?: string | null
           evaluasi_kinerja?: string | null
           faq?: Json
           id?: string
@@ -2787,6 +2791,8 @@ export type Database = {
           sarana_prasarana?: string | null
           sla_hari?: number
           slug: string
+          tte_required?: boolean
+          tte_signer_role?: string | null
           updated_at?: string
           urutan?: number
         }
@@ -2797,6 +2803,7 @@ export type Database = {
           created_at?: string
           dasar_hukum?: string | null
           deskripsi?: string | null
+          document_template_id?: string | null
           evaluasi_kinerja?: string | null
           faq?: Json
           id?: string
@@ -2815,10 +2822,20 @@ export type Database = {
           sarana_prasarana?: string | null
           sla_hari?: number
           slug?: string
+          tte_required?: boolean
+          tte_signer_role?: string | null
           updated_at?: string
           urutan?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "layanan_publik_document_template_id_fkey"
+            columns: ["document_template_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       leave_balances: {
         Row: {
