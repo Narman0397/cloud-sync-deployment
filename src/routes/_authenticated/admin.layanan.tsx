@@ -96,6 +96,21 @@ function LayananPage() {
     if (isAdmin) load();
   }, [isAdmin, user?.id]);
 
+  // Muat daftar template setiap kali modal edit dibuka.
+  useEffect(() => {
+    if (!editing) return;
+    const opdForTpl = isSuperAdmin ? (editing.opd_id ?? null) : myOpdId;
+    (async () => {
+      try {
+        const r = await fnListTpl({ data: { opd_id: opdForTpl } });
+        setTemplates((r.rows ?? []) as TplRow[]);
+      } catch {
+        setTemplates([]);
+      }
+    })();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [editing?.id, editing?.opd_id, myOpdId]);
+
   const visible = useMemo(() => {
     if (isSuperAdmin) return rows;
     return rows.filter((r) => r.opd_id === myOpdId);
