@@ -137,6 +137,9 @@ function LayananPage() {
           evaluasi_kinerja: editing.evaluasi_kinerja ?? null,
           maklumat_pelayanan: editing.maklumat_pelayanan ?? null,
           faq: (editing.faq ?? []).filter((f) => f.q.trim() && f.a.trim()),
+          document_template_id: editing.document_template_id ?? null,
+          tte_required: editing.tte_required ?? false,
+          tte_signer_role: editing.tte_signer_role ?? null,
         },
       });
       await invalidateLayanan(qc);
