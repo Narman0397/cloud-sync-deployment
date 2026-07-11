@@ -1,15 +1,21 @@
 // Admin: kelola Layanan Publik per OPD.
 // Super admin: lihat semua. Admin OPD: hanya layanan milik OPD-nya.
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, X, ListChecks } from "lucide-react";
+import { Plus, Pencil, Trash2, X, ListChecks, FileText, ShieldCheck } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { upsertLayanan, deleteLayanan } from "@/lib/admin-actions.functions";
+import {
+  listTemplatesForLayanan,
+  createTemplateFromLayanan,
+} from "@/lib/layanan-template.functions";
+import { PERMOHONAN_PLACEHOLDERS } from "@/features/documents/placeholder/permohonan-catalog";
 import { invalidateLayanan } from "@/lib/queries";
 
 export const Route = createFileRoute("/_authenticated/admin/layanan")({
@@ -49,7 +55,12 @@ type Layanan = {
   evaluasi_kinerja: string | null;
   maklumat_pelayanan: string | null;
   faq: FaqItem[];
+  document_template_id: string | null;
+  tte_required: boolean;
+  tte_signer_role: "kepala_opd" | "kabid" | "staf" | null;
 };
+
+type TplRow = { id: string; name: string };
 
 function LayananPage() {
   const { user, isAdmin, isSuperAdmin } = useAuth();
@@ -59,6 +70,9 @@ function LayananPage() {
   const [myOpdId, setMyOpdId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<Layanan> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [templates, setTemplates] = useState<TplRow[]>([]);
+  const fnListTpl = useServerFn(listTemplatesForLayanan);
+  const fnCreateTpl = useServerFn(createTemplateFromLayanan);
 
   async function load() {
     if (!user) return;
@@ -81,6 +95,21 @@ function LayananPage() {
   useEffect(() => {
     if (isAdmin) load();
   }, [isAdmin, user?.id]);
+
+  // Muat daftar template setiap kali modal edit dibuka.
+  useEffect(() => {
+    if (!editing) return;
+    const opdForTpl = isSuperAdmin ? (editing.opd_id ?? null) : myOpdId;
+    (async () => {
+      try {
+        const r = await fnListTpl({ data: { opd_id: opdForTpl } });
+        setTemplates((r.rows ?? []) as TplRow[]);
+      } catch {
+        setTemplates([]);
+      }
+    })();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [editing?.id, editing?.opd_id, myOpdId]);
 
   const visible = useMemo(() => {
     if (isSuperAdmin) return rows;
@@ -123,6 +152,9 @@ function LayananPage() {
           evaluasi_kinerja: editing.evaluasi_kinerja ?? null,
           maklumat_pelayanan: editing.maklumat_pelayanan ?? null,
           faq: (editing.faq ?? []).filter((f) => f.q.trim() && f.a.trim()),
+          document_template_id: editing.document_template_id ?? null,
+          tte_required: editing.tte_required ?? false,
+          tte_signer_role: editing.tte_signer_role ?? null,
         },
       });
       await invalidateLayanan(qc);
@@ -444,6 +476,139 @@ function LayananPage() {
                   className="input"
                 />
               </Field>
+
+              {/* Template Dokumen Final + TTE */}
+              <div className="mt-2 rounded-lg border border-primary/30 bg-primary-soft/20 p-3 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                  <FileText className="h-4 w-4" /> Template Dokumen Final & TTE
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Dokumen final untuk permohonan layanan ini akan dirakit otomatis dari
+                  template terpilih dan diisi dengan data akun pemohon + input permohonan,
+                  serta ditandatangani QR verifikasi keaslian sistem.
+                </p>
+                <Field label="Template dokumen">
+                  <div className="flex gap-2">
+                    <select
+                      value={editing.document_template_id ?? ""}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          document_template_id: e.target.value || null,
+                        })
+                      }
+                      className="input flex-1"
+                    >
+                      <option value="">— Tidak menggunakan template (fallback default) —</option>
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    {editing.id ? (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!editing.id) return;
+                          try {
+                            const r = await fnCreateTpl({
+                              data: { layanan_id: editing.id },
+                            });
+                            toast.success("Template dibuat & ditautkan");
+                            setEditing({ ...editing, document_template_id: r.template_id });
+                            const list = await fnListTpl({
+                              data: {
+                                opd_id: isSuperAdmin
+                                  ? (editing.opd_id ?? null)
+                                  : myOpdId,
+                              },
+                            });
+                            setTemplates((list.rows ?? []) as TplRow[]);
+                          } catch (e) {
+                            toast.error((e as Error).message);
+                          }
+                        }}
+                        className="whitespace-nowrap rounded-md border border-border bg-background px-3 text-xs font-medium hover:bg-muted"
+                      >
+                        Buat dari layanan ini
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground self-center">
+                        Simpan dulu untuk membuat template
+                      </span>
+                    )}
+                  </div>
+                </Field>
+                <div className="text-xs">
+                  <Link
+                    to="/admin/document-center/templates"
+                    className="text-primary hover:underline"
+                  >
+                    Kelola template dokumen →
+                  </Link>
+                </div>
+                <details className="rounded-md border border-border bg-background p-2 text-xs">
+                  <summary className="cursor-pointer font-medium">
+                    Katalog placeholder ({" "}
+                    {PERMOHONAN_PLACEHOLDERS.reduce((a, g) => a + g.items.length, 0)} token)
+                  </summary>
+                  <div className="mt-2 grid gap-2 md:grid-cols-2">
+                    {PERMOHONAN_PLACEHOLDERS.map((g) => (
+                      <div key={g.category}>
+                        <div className="font-semibold text-muted-foreground">{g.label}</div>
+                        <ul className="space-y-0.5">
+                          {g.items.map((it) => (
+                            <li key={it.token}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard?.writeText(`{{${it.token}}}`);
+                                  toast.success(`Disalin: {{${it.token}}}`);
+                                }}
+                                className="font-mono text-primary hover:underline"
+                              >
+                                {`{{${it.token}}}`}
+                              </button>{" "}
+                              — {it.label}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={editing.tte_required ?? false}
+                    onChange={(e) =>
+                      setEditing({ ...editing, tte_required: e.target.checked })
+                    }
+                  />
+                  <ShieldCheck className="h-4 w-4 text-primary" />
+                  Wajib Tanda Tangan Elektronik (TTE) sebelum dokumen final terbit resmi
+                </label>
+                {editing.tte_required && (
+                  <Field label="Peran penandatangan">
+                    <select
+                      value={editing.tte_signer_role ?? "kepala_opd"}
+                      onChange={(e) =>
+                        setEditing({
+                          ...editing,
+                          tte_signer_role: e.target.value as Layanan["tte_signer_role"],
+                        })
+                      }
+                      className="input"
+                    >
+                      <option value="kepala_opd">Kepala OPD</option>
+                      <option value="kabid">Kepala Bidang</option>
+                      <option value="staf">Staf</option>
+                    </select>
+                  </Field>
+                )}
+              </div>
 
               <Field label="FAQ / Pertanyaan Umum">
                 <div className="space-y-2">

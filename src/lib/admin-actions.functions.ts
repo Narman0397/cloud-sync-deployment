@@ -592,6 +592,9 @@ const layananSchema = z.object({
     .array(z.object({ q: z.string().min(1).max(300), a: z.string().min(1).max(2000) }))
     .max(50)
     .default([]),
+  document_template_id: z.string().uuid().optional().nullable(),
+  tte_required: z.boolean().default(false),
+  tte_signer_role: z.enum(["kepala_opd", "kabid", "staf"]).optional().nullable(),
 });
 
 export const upsertLayanan = createServerFn({ method: "POST" })
@@ -643,6 +646,9 @@ export const upsertLayanan = createServerFn({ method: "POST" })
       evaluasi_kinerja: data.evaluasi_kinerja ?? null,
       maklumat_pelayanan: data.maklumat_pelayanan ?? null,
       faq: data.faq ?? [],
+      document_template_id: data.document_template_id ?? null,
+      tte_required: data.tte_required ?? false,
+      tte_signer_role: data.tte_signer_role ?? null,
     };
     if (data.id) {
       const { error } = await supabaseAdmin
