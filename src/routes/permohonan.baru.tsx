@@ -132,7 +132,7 @@ function BaruPage() {
           deskripsi: prev.deskripsi || (data.deskripsi ?? ""),
         }));
         if (typeof data.sla_hari === "number") setSlaHari(data.sla_hari);
-        setPickedLayananId(data.id);
+        
       }
       setPrefilling(false);
     })();
