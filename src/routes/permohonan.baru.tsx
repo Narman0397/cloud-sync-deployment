@@ -86,26 +86,10 @@ function BaruPage() {
   const [untukOrangLain, setUntukOrangLain] = useState(false);
   const [atasNama, setAtasNama] = useState({ nama: "", nik: "", hp: "" });
   const [compressing, setCompressing] = useState(false);
-  type LayananItem = { id: string; slug: string; judul: string; deskripsi: string | null; sla_hari: number | null };
-  const [layananList, setLayananList] = useState<LayananItem[]>([]);
-  const [pickedLayananId, setPickedLayananId] = useState<string>("");
+  // Template layanan tidak lagi dipilih manual oleh masyarakat — sistem
+  // memilih otomatis via `layanan_publik.document_template_id` saat dokumen
+  // final digenerate. Prefill judul/deskripsi/SLA cukup dari slug layanan.
 
-  // Muat template layanan aktif untuk OPD terpilih (integrasi picker layanan).
-  useEffect(() => {
-    if (!form.opd_id) { setLayananList([]); setPickedLayananId(""); return; }
-    let cancel = false;
-    supabase
-      .from("layanan_publik")
-      .select("id,slug,judul,deskripsi,sla_hari")
-      .eq("opd_id", form.opd_id)
-      .eq("aktif", true)
-      .order("judul")
-      .then(({ data }) => {
-        if (cancel) return;
-        setLayananList((data ?? []) as LayananItem[]);
-      });
-    return () => { cancel = true; };
-  }, [form.opd_id]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -127,6 +111,7 @@ function BaruPage() {
   }, []);
 
   // Prefill form berdasar slug layanan dari query string.
+  // Template layanan dipilih otomatis oleh sistem — tidak ditampilkan ke masyarakat.
   useEffect(() => {
     if (!layananSlug) return;
     let cancelled = false;
@@ -134,7 +119,7 @@ function BaruPage() {
       setPrefilling(true);
       const { data } = await supabase
         .from("layanan_publik")
-        .select("judul,opd_id,sla_hari")
+        .select("id,judul,deskripsi,opd_id,sla_hari")
         .eq("slug", layananSlug)
         .eq("aktif", true)
         .maybeSingle();
@@ -144,8 +129,10 @@ function BaruPage() {
           ...prev,
           opd_id: data.opd_id ?? prev.opd_id,
           judul: prev.judul || `Permohonan ${data.judul}`,
+          deskripsi: prev.deskripsi || (data.deskripsi ?? ""),
         }));
         if (typeof data.sla_hari === "number") setSlaHari(data.sla_hari);
+        
       }
       setPrefilling(false);
     })();
@@ -407,34 +394,10 @@ function BaruPage() {
             </select>
           </Field>
 
-          {layananList.length > 0 && (
-            <Field label="Template Layanan (opsional)">
-              <select
-                value={pickedLayananId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setPickedLayananId(id);
-                  const t = layananList.find((x) => x.id === id);
-                  if (!t) return;
-                  setForm((prev) => ({
-                    ...prev,
-                    judul: `Permohonan ${t.judul}`,
-                    deskripsi: prev.deskripsi || (t.deskripsi ?? ""),
-                  }));
-                  if (typeof t.sla_hari === "number") setSlaHari(t.sla_hari);
-                }}
-                className="input h-11"
-              >
-                <option value="">— Pilih template dari daftar layanan aktif —</option>
-                {layananList.map((t) => (
-                  <option key={t.id} value={t.id}>{t.judul}</option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Pilih template untuk mengisi judul, deskripsi, dan SLA secara otomatis.
-              </p>
-            </Field>
-          )}
+          {/* Template layanan dipilih otomatis oleh sistem berdasarkan layanan
+              yang diajukan — tidak ditampilkan ke masyarakat. */}
+
+
 
 
 
