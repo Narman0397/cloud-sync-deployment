@@ -127,6 +127,7 @@ function BaruPage() {
   }, []);
 
   // Prefill form berdasar slug layanan dari query string.
+  // Template layanan dipilih otomatis oleh sistem — tidak ditampilkan ke masyarakat.
   useEffect(() => {
     if (!layananSlug) return;
     let cancelled = false;
@@ -134,7 +135,7 @@ function BaruPage() {
       setPrefilling(true);
       const { data } = await supabase
         .from("layanan_publik")
-        .select("judul,opd_id,sla_hari")
+        .select("id,judul,deskripsi,opd_id,sla_hari")
         .eq("slug", layananSlug)
         .eq("aktif", true)
         .maybeSingle();
@@ -144,8 +145,10 @@ function BaruPage() {
           ...prev,
           opd_id: data.opd_id ?? prev.opd_id,
           judul: prev.judul || `Permohonan ${data.judul}`,
+          deskripsi: prev.deskripsi || (data.deskripsi ?? ""),
         }));
         if (typeof data.sla_hari === "number") setSlaHari(data.sla_hari);
+        setPickedLayananId(data.id);
       }
       setPrefilling(false);
     })();
