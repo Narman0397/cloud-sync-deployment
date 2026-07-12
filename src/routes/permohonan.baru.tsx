@@ -86,26 +86,10 @@ function BaruPage() {
   const [untukOrangLain, setUntukOrangLain] = useState(false);
   const [atasNama, setAtasNama] = useState({ nama: "", nik: "", hp: "" });
   const [compressing, setCompressing] = useState(false);
-  type LayananItem = { id: string; slug: string; judul: string; deskripsi: string | null; sla_hari: number | null };
-  const [layananList, setLayananList] = useState<LayananItem[]>([]);
-  const [pickedLayananId, setPickedLayananId] = useState<string>("");
+  // Template layanan tidak lagi dipilih manual oleh masyarakat — sistem
+  // memilih otomatis via `layanan_publik.document_template_id` saat dokumen
+  // final digenerate. Prefill judul/deskripsi/SLA cukup dari slug layanan.
 
-  // Muat template layanan aktif untuk OPD terpilih (integrasi picker layanan).
-  useEffect(() => {
-    if (!form.opd_id) { setLayananList([]); setPickedLayananId(""); return; }
-    let cancel = false;
-    supabase
-      .from("layanan_publik")
-      .select("id,slug,judul,deskripsi,sla_hari")
-      .eq("opd_id", form.opd_id)
-      .eq("aktif", true)
-      .order("judul")
-      .then(({ data }) => {
-        if (cancel) return;
-        setLayananList((data ?? []) as LayananItem[]);
-      });
-    return () => { cancel = true; };
-  }, [form.opd_id]);
 
   useEffect(() => {
     if (!loading && !user) {
