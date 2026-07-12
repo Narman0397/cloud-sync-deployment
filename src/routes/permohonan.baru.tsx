@@ -410,34 +410,10 @@ function BaruPage() {
             </select>
           </Field>
 
-          {layananList.length > 0 && (
-            <Field label="Template Layanan (opsional)">
-              <select
-                value={pickedLayananId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setPickedLayananId(id);
-                  const t = layananList.find((x) => x.id === id);
-                  if (!t) return;
-                  setForm((prev) => ({
-                    ...prev,
-                    judul: `Permohonan ${t.judul}`,
-                    deskripsi: prev.deskripsi || (t.deskripsi ?? ""),
-                  }));
-                  if (typeof t.sla_hari === "number") setSlaHari(t.sla_hari);
-                }}
-                className="input h-11"
-              >
-                <option value="">— Pilih template dari daftar layanan aktif —</option>
-                {layananList.map((t) => (
-                  <option key={t.id} value={t.id}>{t.judul}</option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Pilih template untuk mengisi judul, deskripsi, dan SLA secara otomatis.
-              </p>
-            </Field>
-          )}
+          {/* Template layanan dipilih otomatis oleh sistem berdasarkan layanan
+              yang diajukan — tidak ditampilkan ke masyarakat. */}
+
+
 
 
 
