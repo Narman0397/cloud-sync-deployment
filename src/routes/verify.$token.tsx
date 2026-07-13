@@ -68,6 +68,7 @@ const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 function Page() {
   const { token } = Route.useParams();
   const verify = useServerFn(verifyByToken);
+  const verifyBukti = useServerFn(verifyBuktiByToken);
   const verifyUpload = useServerFn(verifyUploadedPdf);
   const [state, setState] = useState<Loaded>({ state: "loading" });
   const [reUpload, setReUpload] = useState<File | null>(null);
