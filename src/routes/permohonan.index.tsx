@@ -53,6 +53,8 @@ function ListPage() {
   const [wakilNama, setWakilNama] = useState("");
   const [wakilNik, setWakilNik] = useState("");
   const [savingWakil, setSavingWakil] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const genBukti = useServerFn(generateBuktiPermohonan);
   // Grace period: jangan redirect sampai benar-benar yakin user tidak login.
   // Penting di PWA standalone Android di mana restore sesi dari storage bisa
   // sedikit telat sehingga `user` masih null beberapa ratus ms setelah loading=false.
