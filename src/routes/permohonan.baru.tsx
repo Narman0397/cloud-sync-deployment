@@ -406,34 +406,16 @@ function BaruPage() {
 
 
 
-          <Field label="Kategori Layanan" required>
-            <select
-              required
-              disabled={!opd}
+          <Field label="Kategori Layanan">
+            <input
+              readOnly
               value={form.kategori}
-              onChange={(e) => {
-                setForm({ ...form, kategori: e.target.value });
-                if (e.target.value !== "Lainnya") setKategoriLain("");
-              }}
-              className="input h-11"
-            >
-              <option value="">— Pilih kategori —</option>
-              {kategoriOptions.map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
-            {isLainnya && (
-              <input
-                required
-                value={kategoriLain}
-                onChange={(e) => setKategoriLain(e.target.value)}
-                className="input h-11 mt-2"
-                placeholder="Sebutkan jenis layanan yang dibutuhkan…"
-                maxLength={100}
-              />
-            )}
+              className="input h-11 bg-muted cursor-not-allowed"
+              placeholder="Otomatis mengikuti OPD tujuan"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Kategori otomatis menggunakan singkatan OPD penyedia layanan.
+            </p>
           </Field>
 
           <Field label="Judul Permohonan" required>
