@@ -142,13 +142,18 @@ function BaruPage() {
   }, [layananSlug]);
 
   const opd = opdList.find((o) => o.id === form.opd_id);
-  // Susun kategori: pisahkan "Lainnya" agar selalu di posisi terakhir & tidak duplikat.
-  const kategoriOptions = (() => {
-    if (!opd) return [] as string[];
-    const base = opd.kategori.filter((k) => k.toLowerCase() !== "lainnya");
-    return [...base, "Lainnya"];
-  })();
-  const isLainnya = form.kategori === "Lainnya";
+  // Kategori otomatis mengikuti singkatan OPD penyedia layanan.
+  useEffect(() => {
+    if (opd) {
+      setForm((prev) =>
+        prev.kategori === opd.singkatan ? prev : { ...prev, kategori: opd.singkatan },
+      );
+      setKategoriLain("");
+    } else {
+      setForm((prev) => (prev.kategori === "" ? prev : { ...prev, kategori: "" }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opd?.id]);
 
   async function onPickFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const list = Array.from(e.target.files ?? []);
