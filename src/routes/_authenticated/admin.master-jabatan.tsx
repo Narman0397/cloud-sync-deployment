@@ -41,6 +41,7 @@ function Page() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<Row> | null>(null);
+  const [rbacFor, setRbacFor] = useState<Row | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
