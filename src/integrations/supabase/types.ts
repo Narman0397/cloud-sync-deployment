@@ -2535,6 +2535,42 @@ export type Database = {
         }
         Relationships: []
       }
+      jabatan_permissions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          jabatan_id: string
+          permission_code: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          jabatan_id: string
+          permission_code: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          jabatan_id?: string
+          permission_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jabatan_permissions_jabatan_id_fkey"
+            columns: ["jabatan_id"]
+            isOneToOne: false
+            referencedRelation: "master_jabatan"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jabatan_permissions_permission_code_fkey"
+            columns: ["permission_code"]
+            isOneToOne: false
+            referencedRelation: "permissions"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       job_queue: {
         Row: {
           attempts: number
