@@ -143,6 +143,13 @@ function Page() {
                   <td className="px-3 py-2">{r.aktif ? "Ya" : "—"}</td>
                   <td className="px-3 py-2">
                     <div className="flex justify-end gap-1">
+                      <button
+                        onClick={() => setRbacFor(r)}
+                        title="Atur RBAC jabatan ini"
+                        className="rounded p-1 text-primary hover:bg-primary-soft"
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                      </button>
                       <button onClick={() => setEditing(r)} className="rounded p-1 hover:bg-muted">
                         <Pencil className="h-4 w-4" />
                       </button>
