@@ -1,7 +1,7 @@
-// CRUD Master Jabatan (super_admin / admin_pemda)
-import { useCallback, useEffect, useState } from "react";
+// CRUD Master Jabatan (super_admin / admin_pemda) + pengaturan RBAC per jabatan.
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, Plus, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { AdminGuard } from "@/components/admin/AdminGuard";
@@ -10,6 +10,9 @@ import {
   listMasterJabatan,
   upsertMasterJabatan,
   deleteMasterJabatan,
+  listPermissionsCatalog,
+  listJabatanPermissions,
+  setJabatanPermissions,
 } from "@/lib/master-jabatan.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/master-jabatan")({
