@@ -264,6 +264,212 @@ function Page() {
           </div>
         </div>
       )}
+
+      {rbacFor && (
+        <JabatanRbacDialog
+          jabatan={rbacFor}
+          onClose={() => setRbacFor(null)}
+        />
+      )}
     </AdminShell>
+  );
+}
+
+type PermCatalog = { code: string; label: string; kategori: string; description: string | null };
+
+function JabatanRbacDialog({ jabatan, onClose }: { jabatan: Row; onClose: () => void }) {
+  const [catalog, setCatalog] = useState<PermCatalog[] | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [filter, setFilter] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [c, cur] = await Promise.all([
+          listPermissionsCatalog(),
+          listJabatanPermissions({ data: { jabatan_id: jabatan.id } }),
+        ]);
+        if (cancelled) return;
+        setCatalog((c.rows as PermCatalog[]) ?? []);
+        setSelected(new Set(cur.codes ?? []));
+      } catch (e) {
+        toast.error((e as Error).message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [jabatan.id]);
+
+  const grouped = useMemo(() => {
+    const m = new Map<string, PermCatalog[]>();
+    const q = filter.trim().toLowerCase();
+    for (const p of catalog ?? []) {
+      if (
+        q &&
+        !p.code.toLowerCase().includes(q) &&
+        !(p.label ?? "").toLowerCase().includes(q) &&
+        !(p.kategori ?? "").toLowerCase().includes(q)
+      )
+        continue;
+      const k = p.kategori ?? "Lainnya";
+      const arr = m.get(k) ?? [];
+      arr.push(p);
+      m.set(k, arr);
+    }
+    return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [catalog, filter]);
+
+  function toggle(code: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  }
+  function toggleCategory(items: PermCatalog[], on: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const p of items) {
+        if (on) next.add(p.code);
+        else next.delete(p.code);
+      }
+      return next;
+    });
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      await setJabatanPermissions({
+        data: { jabatan_id: jabatan.id, codes: Array.from(selected) },
+      });
+      toast.success("Permission jabatan tersimpan");
+      onClose();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4">
+      <div className="flex max-h-[85vh] w-full max-w-3xl flex-col rounded-xl border border-border bg-card shadow-soft">
+        <div className="flex items-start justify-between gap-3 border-b border-border p-5">
+          <div>
+            <h2 className="font-display text-lg font-bold">RBAC — {jabatan.nama}</h2>
+            <p className="text-xs text-muted-foreground">
+              Kode <span className="font-mono">{jabatan.kode}</span>
+              {jabatan.system_position && (
+                <> · Klasifikasi {POSITION_LABEL[jabatan.system_position]}</>
+              )}
+              {" · "}
+              Permission yang dicentang otomatis berlaku untuk seluruh ASN yang memegang jabatan
+              ini.
+            </p>
+          </div>
+          <div className="text-xs">
+            <span className="rounded-full bg-primary-soft px-2 py-1 font-semibold text-primary">
+              {selected.size} aktif
+            </span>
+          </div>
+        </div>
+        <div className="border-b border-border p-3">
+          <input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Cari permission…"
+            className="h-9 w-full rounded-md border border-border bg-surface px-3 text-sm"
+          />
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {catalog === null ? (
+            <div className="grid h-40 place-items-center">
+              <Loader2 className="h-5 w-5 animate-spin" />
+            </div>
+          ) : grouped.length === 0 ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              Tidak ada permission cocok.
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {grouped.map(([kategori, items]) => {
+                const allOn = items.every((p) => selected.has(p.code));
+                return (
+                  <div key={kategori}>
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                        {kategori}
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => toggleCategory(items, !allOn)}
+                        className="text-xs font-semibold text-primary hover:underline"
+                      >
+                        {allOn ? "Kosongkan" : "Pilih semua"}
+                      </button>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {items.map((p) => {
+                        const on = selected.has(p.code);
+                        return (
+                          <label
+                            key={p.code}
+                            className={`flex cursor-pointer items-start gap-2 rounded-md border p-2 text-sm transition ${
+                              on
+                                ? "border-primary bg-primary-soft/40"
+                                : "border-border hover:bg-muted/40"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={on}
+                              onChange={() => toggle(p.code)}
+                              className="mt-0.5"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-medium">{p.label || p.code}</div>
+                              <div className="truncate font-mono text-[10px] text-muted-foreground">
+                                {p.code}
+                              </div>
+                              {p.description && (
+                                <div className="mt-0.5 text-xs text-muted-foreground">
+                                  {p.description}
+                                </div>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-border p-4">
+          <button
+            onClick={onClose}
+            className="h-9 rounded-md border border-border px-3 text-sm"
+            disabled={saving}
+          >
+            Batal
+          </button>
+          <button
+            onClick={save}
+            disabled={saving || catalog === null}
+            className="inline-flex h-9 items-center gap-2 rounded-md bg-gradient-primary px-3 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            Simpan Permission
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
