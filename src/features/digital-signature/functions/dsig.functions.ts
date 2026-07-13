@@ -581,7 +581,61 @@ export const verifyByToken = createServerFn({ method: "POST" })
       .select("*")
       .eq("verification_token", data.token)
       .maybeSingle();
-    if (!signed) return { valid: false as const, reason: "not_found" as const };
+    if (!signed) {
+      // Fallback: token berasal dari dokumen final permohonan (tabel dokumen_verifikasi).
+      const { data: dv } = await supabaseAdmin
+        .from("dokumen_verifikasi")
+        .select(
+          "token, permohonan_id, nomor_surat, storage_path, sha256, created_at, diterbitkan_oleh",
+        )
+        .eq("token", data.token)
+        .maybeSingle();
+      if (!dv) return { valid: false as const, reason: "not_found" as const };
+      const { data: perm } = await supabaseAdmin
+        .from("permohonan")
+        .select("id, kode, judul, kategori, tanggal_masuk")
+        .eq("id", dv.permohonan_id as string)
+        .maybeSingle();
+      let signerInfo: {
+        full_name: string;
+        nip: string | null;
+        position: string | null;
+      } | null = null;
+      if (dv.diterbitkan_oleh) {
+        const { data: prof } = await supabaseAdmin
+          .from("profiles")
+          .select("nama_lengkap, nip, jabatan")
+          .eq("id", dv.diterbitkan_oleh as string)
+          .maybeSingle();
+        if (prof) {
+          signerInfo = {
+            full_name: prof.nama_lengkap ?? "Penerbit",
+            nip: prof.nip ?? null,
+            position: prof.jabatan ?? null,
+          };
+        }
+      }
+      return {
+        valid: true as const,
+        signed: {
+          id: dv.token,
+          document_id: dv.permohonan_id,
+          document_hash: dv.sha256 ?? "",
+          verification_token: dv.token,
+          verification_count: 0,
+          signed_at: dv.created_at,
+          expires_at: null,
+          status: "signed",
+          revoked_at: null,
+          revoke_reason: null,
+          document: {
+            title: perm?.judul ?? `Dokumen ${dv.nomor_surat ?? ""}`.trim(),
+            document_type: perm?.kategori ?? "Dokumen Permohonan",
+          },
+        },
+        signer: signerInfo,
+      };
+    }
 
     // Lazy-expire: jika expires_at lewat, tandai expired sekali, audit EXPIRED.
     let effectiveStatus = signed.status as string;
