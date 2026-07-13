@@ -44,10 +44,24 @@ type ValidData = {
   revoke_reason: string | null;
   revoked_at: string | null;
 };
+type BuktiData = {
+  permohonan_id: string;
+  kode: string;
+  judul: string;
+  kategori: string;
+  status: string;
+  tanggal_masuk: string;
+  generated_at: string | null;
+  verified_at: string | null;
+  verified_note: string | null;
+  pemohon: { nama: string; nik_masked: string; no_hp: string };
+  opd: { nama: string; singkatan: string };
+};
 type Loaded =
   | { state: "loading" }
   | { state: "invalid"; reason: string }
-  | { state: "valid" | "expired" | "revoked"; data: ValidData };
+  | { state: "valid" | "expired" | "revoked"; data: ValidData }
+  | { state: "bukti"; data: BuktiData };
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
