@@ -25,7 +25,7 @@ export default defineConfig({
         // `.default` is undefined → runtime error:
         // "Cannot destructure property '__extends' of '__toESM(...).default'".
         // Using tslib.es6.mjs exposes the helpers as real named ESM exports.
-        { find: /^tslib$/, replacement: "tslib/tslib.es6.mjs" },
+        { find: /^tslib$/, replacement: tslibEsm },
       ],
     },
     plugins: [
