@@ -289,6 +289,15 @@ function ListPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col items-start gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => unduhBukti(p.id)}
+                          disabled={downloadingId === p.id}
+                          className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary border border-primary/30 hover:bg-primary/20 disabled:opacity-60"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          {downloadingId === p.id ? "Menyiapkan…" : "Unduh Bukti Permohonan"}
+                        </button>
                         {p.status === "selesai" && !p.rating && (
                           <button
                             type="button"
