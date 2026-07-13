@@ -137,6 +137,23 @@ function ListPage() {
     setLoadingList(false);
   }
 
+  async function unduhBukti(id: string) {
+    setDownloadingId(id);
+    try {
+      const r = await genBukti({
+        data: { permohonan_id: id, site_origin: window.location.origin },
+      });
+      if (!r.url) throw new Error("URL bukti tidak tersedia");
+      window.open(r.url, "_blank", "noopener");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal membuat bukti permohonan");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+
+
   useEffect(() => {
     if (!user) return;
     loadData(user.id);
