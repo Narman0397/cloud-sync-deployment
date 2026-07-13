@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Inbox, Star, BarChart3, UserCheck } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Plus, Inbox, Star, BarChart3, UserCheck, Download } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell, PageHero } from "@/components/site/PageShell";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { STATUS_LABEL, STATUS_TONE, fmtTanggal, type StatusPermohonan } from "@/lib/permohonan";
 import { RatingForm } from "@/components/warga/RatingForm";
+import { generateBuktiPermohonan } from "@/lib/bukti-permohonan.functions";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +53,8 @@ function ListPage() {
   const [wakilNama, setWakilNama] = useState("");
   const [wakilNik, setWakilNik] = useState("");
   const [savingWakil, setSavingWakil] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const genBukti = useServerFn(generateBuktiPermohonan);
   // Grace period: jangan redirect sampai benar-benar yakin user tidak login.
   // Penting di PWA standalone Android di mana restore sesi dari storage bisa
   // sedikit telat sehingga `user` masih null beberapa ratus ms setelah loading=false.
@@ -132,6 +136,23 @@ function ListPage() {
     setItems(rows);
     setLoadingList(false);
   }
+
+  async function unduhBukti(id: string) {
+    setDownloadingId(id);
+    try {
+      const r = await genBukti({
+        data: { permohonan_id: id, site_origin: window.location.origin },
+      });
+      if (!r.url) throw new Error("URL bukti tidak tersedia");
+      window.open(r.url, "_blank", "noopener");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal membuat bukti permohonan");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
+
 
   useEffect(() => {
     if (!user) return;
@@ -268,6 +289,15 @@ function ListPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col items-start gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => unduhBukti(p.id)}
+                          disabled={downloadingId === p.id}
+                          className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary border border-primary/30 hover:bg-primary/20 disabled:opacity-60"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          {downloadingId === p.id ? "Menyiapkan…" : "Unduh Bukti Permohonan"}
+                        </button>
                         {p.status === "selesai" && !p.rating && (
                           <button
                             type="button"

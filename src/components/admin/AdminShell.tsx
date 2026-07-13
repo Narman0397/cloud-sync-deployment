@@ -156,6 +156,8 @@ const superNavGroups: NavGroup[] = [
     
     items: [
       { to: "/admin/permohonan", label: "Permohonan", icon: Inbox },
+      { to: "/admin/verifikasi-bukti", label: "Verifikasi Bukti (QR)", icon: ScanLine },
+      { to: "/admin/bukti-template", label: "Template Bukti Permohonan", icon: FileText },
       { to: "/admin/layanan", label: "Jenis Layanan", icon: ListChecks },
       { to: "/admin/laporan", label: "Pengaduan Masyarakat", icon: MessageSquare },
       { to: "/admin/rating", label: "Rating & Evaluasi", icon: Star },

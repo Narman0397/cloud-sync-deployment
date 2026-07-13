@@ -1,54 +1,93 @@
 
-## Masalah
+## Tujuan
 
-Aplikasi memanggil beberapa Cloud Storage bucket, tapi tidak ada satu pun bucket yang dibuat di backend. Semua fitur upload/download otomatis melempar "Bucket not found":
+Menambahkan alur "Bukti Permohonan" end-to-end:
 
-- Upload berkas permohonan warga (`berkas-permohonan`)
-- Upload berkas form dinamis (`form-submissions`)
-- Terbitkan dokumen final PDF (`berkas-permohonan`)
-- Upload foto aset (`aset-foto`)
-- Ekspor share files dataset/form/kinerja (`share-files`)
-- Dokumen hasil tanda tangan digital (`signed-documents`)
-- Simpan specimen tanda tangan (`signatures`)
-- Upload logo/branding situs (`branding`)
-- Upload foto pejabat (`pejabat-foto`)
+1. Setiap permohonan punya **PDF bukti permohonan** dengan **QR code** yang bisa diunduh pemohon di halaman **Permohonan Saya**.
+2. **Admin OPD** punya menu baru **Verifikasi Dokumen Permohonan** untuk scan QR (webcam) dan memvalidasi identitas + status permohonan sebelum menyerahkan dokumen fisik.
+3. **Super Admin** (grup 1 Pelayanan Publik) punya menu baru **Template Bukti Permohonan** untuk mengelola template global (default) yang dipakai semua layanan bila layanan tersebut belum punya template khusus.
 
-## Perbaikan
+Bukti permohonan berbeda dari "Dokumen Final" yang sudah ada:
+- Bukti permohonan: diterbitkan otomatis saat permohonan dibuat, berlaku sebagai tanda bukti pengambilan.
+- Dokumen final: dokumen resmi setelah nomor surat terbit (sudah ada, tidak diubah).
 
-Buat semua bucket sekaligus lewat satu migration, dengan pemisahan yang tepat antara bucket publik dan privat, plus policy akses yang aman:
+---
 
-| Bucket | Publik? | Siapa boleh baca | Siapa boleh tulis |
-|---|---|---|---|
-| `branding` | Ya | Semua (situs publik butuh logo) | Super admin & admin pemda |
-| `pejabat-foto` | Ya | Semua (ditampilkan publik) | Super admin & admin pemda/OPD |
-| `berkas-permohonan` | Tidak | Pemohon terkait + admin OPD tujuan + super admin | Pemohon terkait + admin OPD tujuan |
-| `form-submissions` | Tidak | Pemilik submission + admin OPD pemilik form + super admin | Pemilik submission + admin OPD pemilik form |
-| `aset-foto` | Tidak | Admin OPD pemilik aset + super admin | Admin OPD pemilik aset + super admin |
-| `share-files` | Tidak | Admin OPD terkait + super admin (diakses via signed URL) | Sistem (service role) via server function |
-| `signed-documents` | Tidak | Pemohon terkait + admin OPD + super admin (via signed URL) | Sistem tanda tangan (service role) |
-| `signatures` | Tidak | Pemilik specimen + super admin | Pemilik specimen |
+## Perubahan Database (1 migrasi)
 
-Batas ukuran file default 25 MB/berkas untuk bucket upload user, 50 MB untuk `signed-documents` dan `share-files`. MIME diizinkan sesuai kebutuhan tiap bucket (gambar untuk foto, PDF/Office untuk berkas, dsb.).
+Menambah kolom & tabel pendukung tanpa mengubah tabel yang ada secara destruktif:
 
-## Detail teknis
+- `public.permohonan`:
+  - `bukti_token text` (unik, di-generate saat insert/pertama kali diminta)
+  - `bukti_path text` (path di bucket `berkas-permohonan`)
+  - `bukti_generated_at timestamptz`
+  - `bukti_verified_at timestamptz`, `bukti_verified_by uuid`, `bukti_verified_note text`
+- `public.app_setting`: baris baru `key = 'bukti_permohonan_template_html'` untuk template global (dikelola super admin).
+- Index unik pada `permohonan.bukti_token`.
 
-1. Satu file migration baru berisi:
-   - `INSERT INTO storage.buckets (...) ON CONFLICT DO NOTHING` untuk 9 bucket di atas (set `public`, `file_size_limit`, `allowed_mime_types`).
-   - `CREATE POLICY` per bucket di `storage.objects` untuk SELECT/INSERT/UPDATE/DELETE. Policy memakai konvensi path yang sudah dipakai kode:
-     - `berkas-permohonan/{permohonan_id}/…` → cek kepemilikan lewat `public.permohonan` (pemohon_id / opd_id + `has_role`).
-     - `form-submissions/{form_id}/{user_id}/…` → cek `auth.uid()` sama dengan segmen kedua atau admin OPD pemilik form.
-     - `aset-foto/{opd_id}/…` → cek `get_user_opd(auth.uid())` atau `super_admin`.
-     - `signatures/{user_id}/…` → cek `auth.uid()` sama dengan segmen pertama.
-     - `pejabat-foto`, `branding` → SELECT publik, tulis untuk role admin.
-     - `share-files`, `signed-documents` → hanya service role yang menulis; baca lewat signed URL (tak butuh policy SELECT untuk anon karena signed URL bypass RLS).
-2. Tidak menyentuh file client — semua panggilan `supabase.storage.from(...)` sudah menargetkan nama bucket yang benar; hanya bucket-nya yang belum ada.
-3. Setelah migration disetujui, uji cepat:
-   - Buka Admin → Branding: unggah logo (bucket `branding`).
-   - Buka Admin → Pejabat: unggah foto (bucket `pejabat-foto`).
-   - Ajukan permohonan baru dengan lampiran (bucket `berkas-permohonan`).
-   - Terbitkan dokumen final (bucket `berkas-permohonan` via server fn).
+Tidak ada perubahan pada RLS permohonan (masih via kebijakan lama). Tidak ada tabel baru.
 
-## Yang TIDAK diubah
+## Server Functions
 
-- Skema tabel aplikasi, RLS tabel non-storage, fungsi RPC, dan kode UI tetap seperti sekarang.
-- Tidak menambah bucket baru di luar yang sudah dipakai kode.
+Baru di `src/lib/bukti-permohonan.functions.ts`:
+
+- `generateBuktiPermohonan({ permohonan_id, site_origin })` — dipanggil pemohon; buat/regenerate PDF (template layanan → template global → fallback), simpan `bukti_path` + `bukti_token`, kembalikan signed URL.
+- `getBuktiSignedUrl({ permohonan_id })` — kembalikan signed URL 10 menit (regenerate jika belum ada).
+- `verifyBuktiByToken({ token })` — public (tanpa auth) untuk halaman `/v/{token}`; kembalikan status permohonan + identitas pemohon (nama, NIK termasked) + link download bagi admin OPD terkait.
+- `adminScanVerifyBukti({ token, note })` — admin OPD/super admin; catat `bukti_verified_at/by/note` + insert baris di `permohonan_riwayat` ("Diverifikasi via QR").
+
+Baru di `src/lib/bukti-template.functions.ts` (super admin):
+
+- `getBuktiTemplate()` — baca `app_setting`.
+- `saveBuktiTemplate({ html })` — tulis `app_setting` (RBAC super_admin/admin_pemda).
+
+Template menggunakan engine `mergeTemplate` yang sudah ada (`{{pemohon.nama}}`, `{{permohonan.kode}}`, `{{verify_url}}`, dll).
+
+## UI
+
+**Pemohon — `src/routes/permohonan.index.tsx` & `permohonan.$id.tsx`:**
+- Tambah tombol **"Unduh Bukti Permohonan"** di setiap kartu permohonan di daftar dan di halaman detail. Klik → panggil `generateBuktiPermohonan` → buka PDF di tab baru.
+
+**Admin OPD — route baru `src/routes/_authenticated/admin.verifikasi-bukti.tsx`:**
+- Halaman scanner QR (pakai komponen `QrScanner` yang sudah ada di `src/components/asn/QrScanner.tsx`).
+- Setelah scan: tampilkan detail permohonan (kode, judul, pemohon, status, tanggal), tombol **"Tandai Diverifikasi"** dengan input catatan opsional.
+- Manual input token sebagai fallback.
+- Tambahkan link menu di `AdminShell` grup Pelayanan Publik.
+
+**Super Admin — route baru `src/routes/_authenticated/admin.bukti-template.tsx`:**
+- Editor HTML (textarea + preview) untuk template global.
+- Daftar placeholder yang tersedia (dari `permohonan-catalog`).
+- Tambahkan link menu di `AdminShell` grup 1 Pelayanan Publik.
+
+**Verifikasi publik — perluas `src/routes/verify.$token.tsx` (atau tambah cabang di `verifyByToken`)** agar juga mengenali bukti permohonan (bukan hanya dokumen final).
+
+## Storage
+
+Menggunakan bucket **`berkas-permohonan`** yang sudah ada. Path: `bukti/{permohonan_id}/{token}.pdf`. Kebijakan RLS existing sudah mengizinkan pemohon & admin OPD terkait.
+
+## Alur
+
+```text
+Pemohon buat permohonan
+  → klik "Unduh Bukti Permohonan"
+  → PDF berisi QR (URL /v/{token}) diunduh
+Pemohon datang ke OPD dengan cetakan
+  → Admin OPD buka "Verifikasi Bukti" → scan QR
+  → Sistem cek token → tampil detail
+  → Admin klik "Tandai Diverifikasi" (+ catatan)
+  → permohonan.bukti_verified_at terisi + riwayat tercatat
+```
+
+## Detail Teknis
+
+- PDF dibuat dengan `pdf-lib` + `qrcode` (sudah dipakai `dokumen-final.functions.ts`); refactor helper `htmlToPlainBlocks` & pembangunan QR ke util bersama `src/features/documents/services/pdf-render.service.ts` agar dipakai kedua fungsi.
+- Prioritas template: `layanan_publik.document_template_id` (existing) → `app_setting.bukti_permohonan_template_html` (baru) → fallback layout default.
+- `verifyByToken` di `dsig.functions.ts` diperluas: setelah cek `signed_documents` dan `dokumen_verifikasi`, cek juga `permohonan.bukti_token`.
+- Route menu super admin ditempatkan di grup Pelayanan Publik pada `AdminShell` (bersama Layanan, Permohonan, Kategori).
+
+## Verifikasi
+
+- Buat permohonan dummy → unduh bukti → cek PDF valid & QR bisa dipindai.
+- Buka `/v/{token}` sebagai anonim → detail permohonan tampil.
+- Login sebagai admin OPD → scan QR → tandai diverifikasi → cek kolom `bukti_verified_at` terisi & riwayat muncul.
+- Super admin edit template global → generate ulang bukti untuk layanan tanpa template → isi PDF mengikuti template global.

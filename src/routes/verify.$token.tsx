@@ -1,10 +1,12 @@
 // Public verification portal: /verify/$token
 // - Memuat status (VALID / EXPIRED / REVOKED / INVALID) dari server.
 // - Verifikasi ulang via UPLOAD PDF: SERVER yang menghitung SHA-256 (tidak percaya client).
+// - Fallback: token adalah "Bukti Permohonan" (menampilkan detail permohonan).
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { verifyByToken, verifyUploadedPdf } from "@/features/digital-signature";
+import { verifyBuktiByToken } from "@/lib/bukti-permohonan.functions";
 import { DocumentVerifyCard } from "@/features/digital-signature/components/DocumentVerifyCard";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
@@ -12,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { CheckCircle2, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/verify/$token")({
   head: ({ params }) => ({
@@ -41,16 +44,31 @@ type ValidData = {
   revoke_reason: string | null;
   revoked_at: string | null;
 };
+type BuktiData = {
+  permohonan_id: string;
+  kode: string;
+  judul: string;
+  kategori: string;
+  status: string;
+  tanggal_masuk: string;
+  generated_at: string | null;
+  verified_at: string | null;
+  verified_note: string | null;
+  pemohon: { nama: string; nik_masked: string; no_hp: string };
+  opd: { nama: string; singkatan: string };
+};
 type Loaded =
   | { state: "loading" }
   | { state: "invalid"; reason: string }
-  | { state: "valid" | "expired" | "revoked"; data: ValidData };
+  | { state: "valid" | "expired" | "revoked"; data: ValidData }
+  | { state: "bukti"; data: BuktiData };
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 function Page() {
   const { token } = Route.useParams();
   const verify = useServerFn(verifyByToken);
+  const verifyBukti = useServerFn(verifyBuktiByToken);
   const verifyUpload = useServerFn(verifyUploadedPdf);
   const [state, setState] = useState<Loaded>({ state: "loading" });
   const [reUpload, setReUpload] = useState<File | null>(null);
@@ -75,6 +93,16 @@ function Page() {
           signer?: { full_name: string; nip: string | null; position: string | null } | null;
         };
         if (!r.signed) {
+          // Fallback: cek Bukti Permohonan.
+          try {
+            const b = await verifyBukti({ data: { token } });
+            if (b.valid) {
+              setState({ state: "bukti", data: b.bukti });
+              return;
+            }
+          } catch {
+            /* ignore, fall through to invalid */
+          }
           setState({ state: "invalid", reason: r.reason ?? "not_found" });
           return;
         }
@@ -142,6 +170,77 @@ function Page() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (state.state === "bukti") {
+    const b = state.data;
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Header />
+        <main className="container mx-auto flex-1 space-y-6 py-8">
+          <Card className="mx-auto max-w-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Bukti Permohonan Layanan Publik
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="rounded-md border border-success/30 bg-success/5 p-3 text-success flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Bukti valid — diterbitkan oleh sistem portal resmi.
+                {b.verified_at && (
+                  <span className="ml-2 text-xs">
+                    · Sudah diverifikasi petugas pada{" "}
+                    {new Date(b.verified_at).toLocaleString("id-ID")}
+                  </span>
+                )}
+              </div>
+              <dl className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Kode</dt>
+                  <dd className="font-mono font-semibold">{b.kode}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Status</dt>
+                  <dd className="capitalize">{b.status}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs text-muted-foreground">Judul</dt>
+                  <dd>{b.judul}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Kategori</dt>
+                  <dd>{b.kategori}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Tanggal Pengajuan</dt>
+                  <dd>{new Date(b.tanggal_masuk).toLocaleDateString("id-ID")}</dd>
+                </div>
+                <div className="sm:col-span-2 border-t border-border pt-2">
+                  <dt className="text-xs text-muted-foreground">Pemohon</dt>
+                  <dd className="font-medium">
+                    {b.pemohon.nama}{" "}
+                    <span className="text-xs text-muted-foreground">
+                      (NIK: {b.pemohon.nik_masked})
+                    </span>
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs text-muted-foreground">OPD Tujuan</dt>
+                  <dd>{b.opd.nama} ({b.opd.singkatan})</dd>
+                </div>
+              </dl>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Petugas OPD dapat login ke portal dan membuka menu{" "}
+                <em>Verifikasi Bukti Permohonan</em> untuk mencatat verifikasi resmi.
+              </p>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
   }
 
   return (
