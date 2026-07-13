@@ -172,6 +172,77 @@ function Page() {
     }
   }
 
+  if (state.state === "bukti") {
+    const b = state.data;
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Header />
+        <main className="container mx-auto flex-1 space-y-6 py-8">
+          <Card className="mx-auto max-w-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                Bukti Permohonan Layanan Publik
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="rounded-md border border-success/30 bg-success/5 p-3 text-success flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Bukti valid — diterbitkan oleh sistem portal resmi.
+                {b.verified_at && (
+                  <span className="ml-2 text-xs">
+                    · Sudah diverifikasi petugas pada{" "}
+                    {new Date(b.verified_at).toLocaleString("id-ID")}
+                  </span>
+                )}
+              </div>
+              <dl className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs text-muted-foreground">Kode</dt>
+                  <dd className="font-mono font-semibold">{b.kode}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Status</dt>
+                  <dd className="capitalize">{b.status}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs text-muted-foreground">Judul</dt>
+                  <dd>{b.judul}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Kategori</dt>
+                  <dd>{b.kategori}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Tanggal Pengajuan</dt>
+                  <dd>{new Date(b.tanggal_masuk).toLocaleDateString("id-ID")}</dd>
+                </div>
+                <div className="sm:col-span-2 border-t border-border pt-2">
+                  <dt className="text-xs text-muted-foreground">Pemohon</dt>
+                  <dd className="font-medium">
+                    {b.pemohon.nama}{" "}
+                    <span className="text-xs text-muted-foreground">
+                      (NIK: {b.pemohon.nik_masked})
+                    </span>
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs text-muted-foreground">OPD Tujuan</dt>
+                  <dd>{b.opd.nama} ({b.opd.singkatan})</dd>
+                </div>
+              </dl>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Petugas OPD dapat login ke portal dan membuka menu{" "}
+                <em>Verifikasi Bukti Permohonan</em> untuk mencatat verifikasi resmi.
+              </p>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
