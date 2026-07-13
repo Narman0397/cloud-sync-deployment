@@ -1,10 +1,12 @@
 // Public verification portal: /verify/$token
 // - Memuat status (VALID / EXPIRED / REVOKED / INVALID) dari server.
 // - Verifikasi ulang via UPLOAD PDF: SERVER yang menghitung SHA-256 (tidak percaya client).
+// - Fallback: token adalah "Bukti Permohonan" (menampilkan detail permohonan).
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { verifyByToken, verifyUploadedPdf } from "@/features/digital-signature";
+import { verifyBuktiByToken } from "@/lib/bukti-permohonan.functions";
 import { DocumentVerifyCard } from "@/features/digital-signature/components/DocumentVerifyCard";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
@@ -12,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { CheckCircle2, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/verify/$token")({
   head: ({ params }) => ({
