@@ -12,6 +12,18 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    resolve: {
+      alias: [
+        // Force tslib to its proper ESM build. The default "node" export
+        // condition resolves to modules/index.js which does
+        //   `import tslib from '../tslib.js'; const { __extends } = tslib;`
+        // On Cloudflare Workers / esbuild interop, tslib.js is CJS and
+        // `.default` is undefined → runtime error:
+        // "Cannot destructure property '__extends' of '__toESM(...).default'".
+        // Using tslib.es6.mjs exposes the helpers as real named ESM exports.
+        { find: /^tslib$/, replacement: "tslib/tslib.es6.mjs" },
+      ],
+    },
     plugins: [
       VitePWA({
         strategies: "injectManifest",
