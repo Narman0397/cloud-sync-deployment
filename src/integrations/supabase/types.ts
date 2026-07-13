@@ -3391,6 +3391,12 @@ export type Database = {
           atas_nama_hp: string | null
           atas_nama_nama: string | null
           atas_nama_nik: string | null
+          bukti_generated_at: string | null
+          bukti_path: string | null
+          bukti_token: string | null
+          bukti_verified_at: string | null
+          bukti_verified_by: string | null
+          bukti_verified_note: string | null
           current_disposition_id: string | null
           deskripsi: string | null
           dokumen_final_path: string | null
@@ -3418,6 +3424,12 @@ export type Database = {
           atas_nama_hp?: string | null
           atas_nama_nama?: string | null
           atas_nama_nik?: string | null
+          bukti_generated_at?: string | null
+          bukti_path?: string | null
+          bukti_token?: string | null
+          bukti_verified_at?: string | null
+          bukti_verified_by?: string | null
+          bukti_verified_note?: string | null
           current_disposition_id?: string | null
           deskripsi?: string | null
           dokumen_final_path?: string | null
@@ -3445,6 +3457,12 @@ export type Database = {
           atas_nama_hp?: string | null
           atas_nama_nama?: string | null
           atas_nama_nik?: string | null
+          bukti_generated_at?: string | null
+          bukti_path?: string | null
+          bukti_token?: string | null
+          bukti_verified_at?: string | null
+          bukti_verified_by?: string | null
+          bukti_verified_note?: string | null
           current_disposition_id?: string | null
           deskripsi?: string | null
           dokumen_final_path?: string | null
