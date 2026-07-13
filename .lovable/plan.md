@@ -1,93 +1,100 @@
+# Perbaikan RBAC — Permission tidak muncul di panel user
 
-## Tujuan
+## Temuan (hasil audit DB + kode)
 
-Menambahkan alur "Bukti Permohonan" end-to-end:
+1. **Tabel `public.permissions` KOSONG (0 baris).**
+   `rbacGetUser` mengembalikan `catalog: []` → panel tab "Permission" tidak
+   menampilkan satu pun row. Ini yang terlihat pada screenshot (hanya header
+   + kalimat hint, tanpa daftar permission).
+2. **Tabel `role_permissions` TIDAK ADA.**
+   Padahal UI berkata "hijau = aktif lewat role". Tidak ada mapping
+   role → permission apa pun di database, jadi user manapun akan selalu
+   menunjukkan "0 aktif" kecuali diberi override manual.
+3. **`get_effective_permissions(_user_id)` hanya membaca `user_permissions`.**
+   Fungsi ini mengabaikan role default → walau kita seed `role_permissions`,
+   effective tetap 0 sampai fungsinya diperbaiki.
+4. **Konsekuensi**: Semua hook `useCan` / `usePermissions` di aplikasi
+   mengembalikan set kosong untuk non-super-admin (super admin di-bypass di
+   `useCan`), sehingga gating fitur untuk admin_opd / admin_desa / asn tidak
+   pernah aktif dan admin melihat panel permission kosong.
 
-1. Setiap permohonan punya **PDF bukti permohonan** dengan **QR code** yang bisa diunduh pemohon di halaman **Permohonan Saya**.
-2. **Admin OPD** punya menu baru **Verifikasi Dokumen Permohonan** untuk scan QR (webcam) dan memvalidasi identitas + status permohonan sebelum menyerahkan dokumen fisik.
-3. **Super Admin** (grup 1 Pelayanan Publik) punya menu baru **Template Bukti Permohonan** untuk mengelola template global (default) yang dipakai semua layanan bila layanan tersebut belum punya template khusus.
+Kode server-function (`rbacGetUser`, override, audit) sudah benar; tidak ada
+perubahan diperlukan di sisi TypeScript/UI.
 
-Bukti permohonan berbeda dari "Dokumen Final" yang sudah ada:
-- Bukti permohonan: diterbitkan otomatis saat permohonan dibuat, berlaku sebagai tanda bukti pengambilan.
-- Dokumen final: dokumen resmi setelah nomor surat terbit (sudah ada, tidak diubah).
+## Perubahan
 
----
+### 1 migration SQL
 
-## Perubahan Database (1 migrasi)
+- **Seed `public.permissions`** dari daftar `PERMISSIONS` di
+  `src/features/rbac/constants.ts` (label + kategori + deskripsi ringkas).
+  Pakai `INSERT ... ON CONFLICT (code) DO UPDATE` supaya idempotent dan bisa
+  dijalankan ulang saat ada permission baru.
+  Kategori:
+  - Formulir (`can_*_form`, `can_manage_forms`, `can_assign_form`)
+  - Verifikasi (`can_verify_*`, `can_approve_*`, `can_reject_*`, `can_request_revision`)
+  - Dokumen (`can_*_document`, `can_request_document`)
+  - Administrasi (`can_manage_users/opd/roles`, `can_view_audit_logs`, `can_export_data`, `can_approve_registration`)
+  - Data (`can_request_data`, `can_approve_data_request`)
+  - Pemda (`pemda.*`, `view_all_*`, `view_kabupaten_dashboard`, `view_cross_opd_analytics`)
+  - Eksekutif (`executive.*`, `view_executive_dashboard`)
 
-Menambah kolom & tabel pendukung tanpa mengubah tabel yang ada secara destruktif:
+- **Buat tabel `public.role_permissions`**:
+  `(role app_role, permission_code text references permissions(code) on delete cascade, primary key (role, permission_code))`.
+  GRANT SELECT ke `authenticated`, ALL ke `service_role`; RLS on; policy
+  SELECT untuk authenticated, manage hanya super_admin (`has_role`).
 
-- `public.permohonan`:
-  - `bukti_token text` (unik, di-generate saat insert/pertama kali diminta)
-  - `bukti_path text` (path di bucket `berkas-permohonan`)
-  - `bukti_generated_at timestamptz`
-  - `bukti_verified_at timestamptz`, `bukti_verified_by uuid`, `bukti_verified_note text`
-- `public.app_setting`: baris baru `key = 'bukti_permohonan_template_html'` untuk template global (dikelola super admin).
-- Index unik pada `permohonan.bukti_token`.
+- **Seed default `role_permissions`**:
+  - `admin_pemda`: seluruh `pemda.*`, `view_all_*`, `view_kabupaten_dashboard`, `view_cross_opd_analytics`, `can_manage_users`, `can_manage_opd`, `can_manage_roles`, `can_view_audit_logs`, `can_export_data`, `can_approve_registration`.
+  - `pimpinan`: `executive.view`, `view_executive_dashboard`, `view_kabupaten_dashboard`, seluruh `view_all_*`.
+  - `admin_opd`: `can_create_form`, `can_edit_form`, `can_publish_form`, `can_assign_form`, `can_manage_forms`, `can_verify_submission`, `can_approve_submission`, `can_reject_submission`, `can_request_revision`, `can_view_sensitive_document`, `can_download_document`, `can_share_document`, `can_approve_data_request`, `can_export_data`.
+  - `admin_desa`: `can_verify_submission`, `can_request_revision`, `can_download_document`, `can_request_document`.
+  - `admin_bkpsdm`: `can_manage_users`, `can_approve_registration`, `can_view_audit_logs`, `can_export_data`.
+  - `kepala_bkpsdm`: `view_all_performance`, `view_all_attendance`, `can_view_audit_logs`.
+  - `asn`: `can_download_document`, `can_request_document`.
+  - `warga`: (kosong — pemohon publik).
+  Idempotent via `ON CONFLICT DO NOTHING`.
 
-Tidak ada perubahan pada RLS permohonan (masih via kebijakan lama). Tidak ada tabel baru.
+- **Rewrite `get_effective_permissions(_user_id uuid)`** menjadi:
+  ```sql
+  WITH role_perms AS (
+    SELECT rp.permission_code
+    FROM public.user_roles ur
+    JOIN public.role_permissions rp ON rp.role = ur.role
+    WHERE ur.user_id = _user_id
+  ),
+  overrides AS (
+    SELECT permission_code, granted
+    FROM public.user_permissions
+    WHERE user_id = _user_id
+      AND revoked_at IS NULL
+      AND (expires_at IS NULL OR expires_at > now())
+  ),
+  merged AS (
+    SELECT permission_code FROM role_perms
+    WHERE permission_code NOT IN (SELECT permission_code FROM overrides WHERE granted = false)
+    UNION
+    SELECT permission_code FROM overrides WHERE granted = true
+  )
+  SELECT COALESCE(array_agg(permission_code), ARRAY[]::text[]) FROM merged;
+  ```
+  Deny override menang atas role default; grant override menambah.
 
-## Server Functions
+- Update `has_permission(_user_id, _permission_code)` supaya konsisten
+  memakai logika yang sama (cek keanggotaan pada hasil `get_effective_permissions`).
 
-Baru di `src/lib/bukti-permohonan.functions.ts`:
+### Tidak ada perubahan kode aplikasi
 
-- `generateBuktiPermohonan({ permohonan_id, site_origin })` — dipanggil pemohon; buat/regenerate PDF (template layanan → template global → fallback), simpan `bukti_path` + `bukti_token`, kembalikan signed URL.
-- `getBuktiSignedUrl({ permohonan_id })` — kembalikan signed URL 10 menit (regenerate jika belum ada).
-- `verifyBuktiByToken({ token })` — public (tanpa auth) untuk halaman `/v/{token}`; kembalikan status permohonan + identitas pemohon (nama, NIK termasked) + link download bagi admin OPD terkait.
-- `adminScanVerifyBukti({ token, note })` — admin OPD/super admin; catat `bukti_verified_at/by/note` + insert baris di `permohonan_riwayat` ("Diverifikasi via QR").
+`UserRbacPanel.tsx`, `admin.functions.ts`, `hooks.ts` sudah benar; setelah
+katalog terisi dan fungsi effective diperbaiki, panel akan otomatis
+menampilkan daftar permission per kategori dengan indikator "hijau = aktif
+lewat role" untuk semua user berdasarkan role mereka.
 
-Baru di `src/lib/bukti-template.functions.ts` (super admin):
+## Verifikasi setelah apply
 
-- `getBuktiTemplate()` — baca `app_setting`.
-- `saveBuktiTemplate({ html })` — tulis `app_setting` (RBAC super_admin/admin_pemda).
-
-Template menggunakan engine `mergeTemplate` yang sudah ada (`{{pemohon.nama}}`, `{{permohonan.kode}}`, `{{verify_url}}`, dll).
-
-## UI
-
-**Pemohon — `src/routes/permohonan.index.tsx` & `permohonan.$id.tsx`:**
-- Tambah tombol **"Unduh Bukti Permohonan"** di setiap kartu permohonan di daftar dan di halaman detail. Klik → panggil `generateBuktiPermohonan` → buka PDF di tab baru.
-
-**Admin OPD — route baru `src/routes/_authenticated/admin.verifikasi-bukti.tsx`:**
-- Halaman scanner QR (pakai komponen `QrScanner` yang sudah ada di `src/components/asn/QrScanner.tsx`).
-- Setelah scan: tampilkan detail permohonan (kode, judul, pemohon, status, tanggal), tombol **"Tandai Diverifikasi"** dengan input catatan opsional.
-- Manual input token sebagai fallback.
-- Tambahkan link menu di `AdminShell` grup Pelayanan Publik.
-
-**Super Admin — route baru `src/routes/_authenticated/admin.bukti-template.tsx`:**
-- Editor HTML (textarea + preview) untuk template global.
-- Daftar placeholder yang tersedia (dari `permohonan-catalog`).
-- Tambahkan link menu di `AdminShell` grup 1 Pelayanan Publik.
-
-**Verifikasi publik — perluas `src/routes/verify.$token.tsx` (atau tambah cabang di `verifyByToken`)** agar juga mengenali bukti permohonan (bukan hanya dokumen final).
-
-## Storage
-
-Menggunakan bucket **`berkas-permohonan`** yang sudah ada. Path: `bukti/{permohonan_id}/{token}.pdf`. Kebijakan RLS existing sudah mengizinkan pemohon & admin OPD terkait.
-
-## Alur
-
-```text
-Pemohon buat permohonan
-  → klik "Unduh Bukti Permohonan"
-  → PDF berisi QR (URL /v/{token}) diunduh
-Pemohon datang ke OPD dengan cetakan
-  → Admin OPD buka "Verifikasi Bukti" → scan QR
-  → Sistem cek token → tampil detail
-  → Admin klik "Tandai Diverifikasi" (+ catatan)
-  → permohonan.bukti_verified_at terisi + riwayat tercatat
-```
-
-## Detail Teknis
-
-- PDF dibuat dengan `pdf-lib` + `qrcode` (sudah dipakai `dokumen-final.functions.ts`); refactor helper `htmlToPlainBlocks` & pembangunan QR ke util bersama `src/features/documents/services/pdf-render.service.ts` agar dipakai kedua fungsi.
-- Prioritas template: `layanan_publik.document_template_id` (existing) → `app_setting.bukti_permohonan_template_html` (baru) → fallback layout default.
-- `verifyByToken` di `dsig.functions.ts` diperluas: setelah cek `signed_documents` dan `dokumen_verifikasi`, cek juga `permohonan.bukti_token`.
-- Route menu super admin ditempatkan di grup Pelayanan Publik pada `AdminShell` (bersama Layanan, Permohonan, Kategori).
-
-## Verifikasi
-
-- Buat permohonan dummy → unduh bukti → cek PDF valid & QR bisa dipindai.
-- Buka `/v/{token}` sebagai anonim → detail permohonan tampil.
-- Login sebagai admin OPD → scan QR → tandai diverifikasi → cek kolom `bukti_verified_at` terisi & riwayat muncul.
-- Super admin edit template global → generate ulang bukti untuk layanan tanpa template → isi PDF mengikuti template global.
+1. Buka Admin → Manajemen User → expand user Admin Desa → tab Permission:
+   harus muncul daftar permission per kategori dengan `can_verify_submission`,
+   `can_request_revision`, `can_download_document`, `can_request_document`
+   bertanda hijau (aktif lewat role).
+2. Grant override sebuah permission → tampil badge GRANT + hijau; Deny →
+   badge DENY + abu. Hapus override → kembali ke default role.
+3. Untuk user Warga: daftar tampil, semua abu-abu (tidak ada default).
