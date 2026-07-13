@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Plus, Inbox, Star, BarChart3, UserCheck } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { Plus, Inbox, Star, BarChart3, UserCheck, Download } from "lucide-react";
 import { toast } from "sonner";
 import { PageShell, PageHero } from "@/components/site/PageShell";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { STATUS_LABEL, STATUS_TONE, fmtTanggal, type StatusPermohonan } from "@/lib/permohonan";
 import { RatingForm } from "@/components/warga/RatingForm";
+import { generateBuktiPermohonan } from "@/lib/bukti-permohonan.functions";
 import {
   Dialog,
   DialogContent,
