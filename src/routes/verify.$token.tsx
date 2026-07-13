@@ -93,6 +93,16 @@ function Page() {
           signer?: { full_name: string; nip: string | null; position: string | null } | null;
         };
         if (!r.signed) {
+          // Fallback: cek Bukti Permohonan.
+          try {
+            const b = await verifyBukti({ data: { token } });
+            if (b.valid) {
+              setState({ state: "bukti", data: b.bukti });
+              return;
+            }
+          } catch {
+            /* ignore, fall through to invalid */
+          }
           setState({ state: "invalid", reason: r.reason ?? "not_found" });
           return;
         }
