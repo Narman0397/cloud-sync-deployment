@@ -139,3 +139,73 @@ export const deleteMasterJabatan = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/** Daftar seluruh permission (katalog) untuk dialog RBAC. */
+export const listPermissionsCatalog = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const supabaseAdmin = await getAdmin();
+    const { data, error } = await supabaseAdmin
+      .from("permissions")
+      .select("code,label,kategori,description")
+      .order("kategori")
+      .order("code");
+    if (error) throw new Error(error.message);
+    return { rows: data ?? [] };
+  });
+
+/** Ambil daftar permission untuk satu jabatan. */
+export const listJabatanPermissions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ jabatan_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data }) => {
+    const supabaseAdmin = await getAdmin();
+    const { data: rows, error } = await supabaseAdmin
+      .from("jabatan_permissions")
+      .select("permission_code")
+      .eq("jabatan_id", data.jabatan_id);
+    if (error) throw new Error(error.message);
+    return {
+      codes: ((rows ?? []) as Array<{ permission_code: string }>).map((r) => r.permission_code),
+    };
+  });
+
+/** Set ulang daftar permission untuk satu jabatan (replace all). */
+export const setJabatanPermissions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        jabatan_id: z.string().uuid(),
+        codes: z.array(z.string().min(1).max(80)).max(200),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.userId);
+    const supabaseAdmin = await getAdmin();
+    // Delete all existing, then insert new set (idempotent replace).
+    const { error: delErr } = await supabaseAdmin
+      .from("jabatan_permissions")
+      .delete()
+      .eq("jabatan_id", data.jabatan_id);
+    if (delErr) throw new Error(delErr.message);
+    if (data.codes.length > 0) {
+      const unique = Array.from(new Set(data.codes));
+      const payload = unique.map((code) => ({
+        jabatan_id: data.jabatan_id,
+        permission_code: code,
+        created_by: context.userId,
+      }));
+      const { error: insErr } = await supabaseAdmin.from("jabatan_permissions").insert(payload);
+      if (insErr) throw new Error(insErr.message);
+    }
+    await supabaseAdmin.from("audit_log").insert({
+      user_id: context.userId,
+      aksi: "jabatan.permissions_updated",
+      entitas: "master_jabatan",
+      entitas_id: data.jabatan_id,
+      data_sesudah: { codes: data.codes } as never,
+    });
+    return { ok: true, count: data.codes.length };
+  });
