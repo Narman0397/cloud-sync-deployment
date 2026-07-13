@@ -6,6 +6,10 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { VitePWA } from "vite-plugin-pwa";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const tslibEsm = require.resolve("tslib/tslib.es6.mjs");
 
 export default defineConfig({
   tanstackStart: {
@@ -21,7 +25,7 @@ export default defineConfig({
         // `.default` is undefined → runtime error:
         // "Cannot destructure property '__extends' of '__toESM(...).default'".
         // Using tslib.es6.mjs exposes the helpers as real named ESM exports.
-        { find: /^tslib$/, replacement: "tslib/tslib.es6.mjs" },
+        { find: /^tslib$/, replacement: tslibEsm },
       ],
     },
     plugins: [
