@@ -55,6 +55,7 @@ import { Route as AuthenticatedAsnAsetRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedAsnAbsensiRouteImport } from './routes/_authenticated/asn.absensi'
 import { Route as AuthenticatedAdminWorkflowInstancesRouteImport } from './routes/_authenticated/admin.workflow-instances'
 import { Route as AuthenticatedAdminVerifikasiLogRouteImport } from './routes/_authenticated/admin.verifikasi-log'
+import { Route as AuthenticatedAdminVerifikasiBuktiRouteImport } from './routes/_authenticated/admin.verifikasi-bukti'
 import { Route as AuthenticatedAdminVerifikasiRouteImport } from './routes/_authenticated/admin.verifikasi'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminTasksRouteImport } from './routes/_authenticated/admin.tasks'
@@ -419,6 +420,12 @@ const AuthenticatedAdminVerifikasiLogRoute =
   AuthenticatedAdminVerifikasiLogRouteImport.update({
     id: '/admin/verifikasi-log',
     path: '/admin/verifikasi-log',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminVerifikasiBuktiRoute =
+  AuthenticatedAdminVerifikasiBuktiRouteImport.update({
+    id: '/admin/verifikasi-bukti',
+    path: '/admin/verifikasi-bukti',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminVerifikasiRoute =
@@ -1261,6 +1268,7 @@ export interface FileRoutesByFullPath {
   '/admin/tasks': typeof AuthenticatedAdminTasksRouteWithChildren
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/verifikasi': typeof AuthenticatedAdminVerifikasiRoute
+  '/admin/verifikasi-bukti': typeof AuthenticatedAdminVerifikasiBuktiRoute
   '/admin/verifikasi-log': typeof AuthenticatedAdminVerifikasiLogRoute
   '/admin/workflow-instances': typeof AuthenticatedAdminWorkflowInstancesRoute
   '/asn/absensi': typeof AuthenticatedAsnAbsensiRoute
@@ -1434,6 +1442,7 @@ export interface FileRoutesByTo {
   '/admin/system-health': typeof AuthenticatedAdminSystemHealthRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/verifikasi': typeof AuthenticatedAdminVerifikasiRoute
+  '/admin/verifikasi-bukti': typeof AuthenticatedAdminVerifikasiBuktiRoute
   '/admin/verifikasi-log': typeof AuthenticatedAdminVerifikasiLogRoute
   '/admin/workflow-instances': typeof AuthenticatedAdminWorkflowInstancesRoute
   '/asn/absensi': typeof AuthenticatedAsnAbsensiRoute
@@ -1612,6 +1621,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/tasks': typeof AuthenticatedAdminTasksRouteWithChildren
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/verifikasi': typeof AuthenticatedAdminVerifikasiRoute
+  '/_authenticated/admin/verifikasi-bukti': typeof AuthenticatedAdminVerifikasiBuktiRoute
   '/_authenticated/admin/verifikasi-log': typeof AuthenticatedAdminVerifikasiLogRoute
   '/_authenticated/admin/workflow-instances': typeof AuthenticatedAdminWorkflowInstancesRoute
   '/_authenticated/asn/absensi': typeof AuthenticatedAsnAbsensiRoute
@@ -1791,6 +1801,7 @@ export interface FileRouteTypes {
     | '/admin/tasks'
     | '/admin/users'
     | '/admin/verifikasi'
+    | '/admin/verifikasi-bukti'
     | '/admin/verifikasi-log'
     | '/admin/workflow-instances'
     | '/asn/absensi'
@@ -1964,6 +1975,7 @@ export interface FileRouteTypes {
     | '/admin/system-health'
     | '/admin/users'
     | '/admin/verifikasi'
+    | '/admin/verifikasi-bukti'
     | '/admin/verifikasi-log'
     | '/admin/workflow-instances'
     | '/asn/absensi'
@@ -2141,6 +2153,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/tasks'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/verifikasi'
+    | '/_authenticated/admin/verifikasi-bukti'
     | '/_authenticated/admin/verifikasi-log'
     | '/_authenticated/admin/workflow-instances'
     | '/_authenticated/asn/absensi'
@@ -2620,6 +2633,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/verifikasi-log'
       fullPath: '/admin/verifikasi-log'
       preLoaderRoute: typeof AuthenticatedAdminVerifikasiLogRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/verifikasi-bukti': {
+      id: '/_authenticated/admin/verifikasi-bukti'
+      path: '/admin/verifikasi-bukti'
+      fullPath: '/admin/verifikasi-bukti'
+      preLoaderRoute: typeof AuthenticatedAdminVerifikasiBuktiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/verifikasi': {
@@ -3855,6 +3875,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminTasksRoute: typeof AuthenticatedAdminTasksRouteWithChildren
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminVerifikasiRoute: typeof AuthenticatedAdminVerifikasiRoute
+  AuthenticatedAdminVerifikasiBuktiRoute: typeof AuthenticatedAdminVerifikasiBuktiRoute
   AuthenticatedAdminVerifikasiLogRoute: typeof AuthenticatedAdminVerifikasiLogRoute
   AuthenticatedAdminWorkflowInstancesRoute: typeof AuthenticatedAdminWorkflowInstancesRoute
   AuthenticatedAsnAbsensiRoute: typeof AuthenticatedAsnAbsensiRoute
@@ -3944,6 +3965,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminTasksRoute: AuthenticatedAdminTasksRouteWithChildren,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminVerifikasiRoute: AuthenticatedAdminVerifikasiRoute,
+  AuthenticatedAdminVerifikasiBuktiRoute:
+    AuthenticatedAdminVerifikasiBuktiRoute,
   AuthenticatedAdminVerifikasiLogRoute: AuthenticatedAdminVerifikasiLogRoute,
   AuthenticatedAdminWorkflowInstancesRoute:
     AuthenticatedAdminWorkflowInstancesRoute,
