@@ -85,6 +85,7 @@ import { Route as AuthenticatedAdminDatasetRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminConfigRouteImport } from './routes/_authenticated/admin.config'
 import { Route as AuthenticatedAdminComplianceRouteImport } from './routes/_authenticated/admin.compliance'
 import { Route as AuthenticatedAdminCmsRouteImport } from './routes/_authenticated/admin.cms'
+import { Route as AuthenticatedAdminBuktiTemplateRouteImport } from './routes/_authenticated/admin.bukti-template'
 import { Route as AuthenticatedAdminBrandingRouteImport } from './routes/_authenticated/admin.branding'
 import { Route as AuthenticatedAdminBackupRouteImport } from './routes/_authenticated/admin.backup'
 import { Route as AuthenticatedAdminAuditRouteImport } from './routes/_authenticated/admin.audit'
@@ -595,6 +596,12 @@ const AuthenticatedAdminCmsRoute = AuthenticatedAdminCmsRouteImport.update({
   path: '/admin/cms',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminBuktiTemplateRoute =
+  AuthenticatedAdminBuktiTemplateRouteImport.update({
+    id: '/admin/bukti-template',
+    path: '/admin/bukti-template',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminBrandingRoute =
   AuthenticatedAdminBrandingRouteImport.update({
     id: '/admin/branding',
@@ -1239,6 +1246,7 @@ export interface FileRoutesByFullPath {
   '/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/admin/backup': typeof AuthenticatedAdminBackupRoute
   '/admin/branding': typeof AuthenticatedAdminBrandingRoute
+  '/admin/bukti-template': typeof AuthenticatedAdminBuktiTemplateRoute
   '/admin/cms': typeof AuthenticatedAdminCmsRoute
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/config': typeof AuthenticatedAdminConfigRoute
@@ -1417,6 +1425,7 @@ export interface FileRoutesByTo {
   '/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/admin/backup': typeof AuthenticatedAdminBackupRoute
   '/admin/branding': typeof AuthenticatedAdminBrandingRoute
+  '/admin/bukti-template': typeof AuthenticatedAdminBuktiTemplateRoute
   '/admin/cms': typeof AuthenticatedAdminCmsRoute
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/config': typeof AuthenticatedAdminConfigRoute
@@ -1592,6 +1601,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/audit': typeof AuthenticatedAdminAuditRoute
   '/_authenticated/admin/backup': typeof AuthenticatedAdminBackupRoute
   '/_authenticated/admin/branding': typeof AuthenticatedAdminBrandingRoute
+  '/_authenticated/admin/bukti-template': typeof AuthenticatedAdminBuktiTemplateRoute
   '/_authenticated/admin/cms': typeof AuthenticatedAdminCmsRoute
   '/_authenticated/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/_authenticated/admin/config': typeof AuthenticatedAdminConfigRoute
@@ -1772,6 +1782,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/backup'
     | '/admin/branding'
+    | '/admin/bukti-template'
     | '/admin/cms'
     | '/admin/compliance'
     | '/admin/config'
@@ -1950,6 +1961,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/backup'
     | '/admin/branding'
+    | '/admin/bukti-template'
     | '/admin/cms'
     | '/admin/compliance'
     | '/admin/config'
@@ -2124,6 +2136,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/audit'
     | '/_authenticated/admin/backup'
     | '/_authenticated/admin/branding'
+    | '/_authenticated/admin/bukti-template'
     | '/_authenticated/admin/cms'
     | '/_authenticated/admin/compliance'
     | '/_authenticated/admin/config'
@@ -2843,6 +2856,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/cms'
       fullPath: '/admin/cms'
       preLoaderRoute: typeof AuthenticatedAdminCmsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/bukti-template': {
+      id: '/_authenticated/admin/bukti-template'
+      path: '/admin/bukti-template'
+      fullPath: '/admin/bukti-template'
+      preLoaderRoute: typeof AuthenticatedAdminBuktiTemplateRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/branding': {
@@ -3846,6 +3866,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminAuditRoute: typeof AuthenticatedAdminAuditRoute
   AuthenticatedAdminBackupRoute: typeof AuthenticatedAdminBackupRoute
   AuthenticatedAdminBrandingRoute: typeof AuthenticatedAdminBrandingRoute
+  AuthenticatedAdminBuktiTemplateRoute: typeof AuthenticatedAdminBuktiTemplateRoute
   AuthenticatedAdminCmsRoute: typeof AuthenticatedAdminCmsRoute
   AuthenticatedAdminComplianceRoute: typeof AuthenticatedAdminComplianceRoute
   AuthenticatedAdminConfigRoute: typeof AuthenticatedAdminConfigRoute
@@ -3932,6 +3953,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminAuditRoute: AuthenticatedAdminAuditRoute,
   AuthenticatedAdminBackupRoute: AuthenticatedAdminBackupRoute,
   AuthenticatedAdminBrandingRoute: AuthenticatedAdminBrandingRoute,
+  AuthenticatedAdminBuktiTemplateRoute: AuthenticatedAdminBuktiTemplateRoute,
   AuthenticatedAdminCmsRoute: AuthenticatedAdminCmsRoute,
   AuthenticatedAdminComplianceRoute: AuthenticatedAdminComplianceRoute,
   AuthenticatedAdminConfigRoute: AuthenticatedAdminConfigRoute,
